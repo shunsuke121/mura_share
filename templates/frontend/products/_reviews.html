@@ -1,0 +1,14 @@
+<h3 class="h5">レビュー</h3>
+{% if reviews %}
+  <div class="list-group">
+    {% for r in reviews %}
+      <div class="list-group-item">
+        <div class="small text-warning mb-1">★ {{ r.rating }}/5</div>
+        {% if r.comment %}<div>{{ r.comment|linebreaksbr }}</div>{% endif %}
+        <div class="text-muted small">{{ r.created_date|date:"Y/m/d H:i" }}</div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="text-muted">まだレビューがありません。</div>
+{% endif %}

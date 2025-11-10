@@ -1,0 +1,32 @@
+/* サイドバーの基本 */
+.layout {
+  min-height: 100vh;
+}
+.sidebar {
+  width: 260px;
+}
+.sidebar .nav-link {
+  border-radius: .5rem;
+}
+.sidebar .nav-link.active {
+  background: #0d6efd;
+  color: #fff;
+}
+.content-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 画像のカード調整 */
+.card-img-top {
+  object-fit: cover;
+  height: 160px;
+}
+
+/* スクロール時の固定 */
+@media (min-width: 992px) {
+  .sidebar-sticky {
+    position: sticky;
+    top: 1rem;
+  }
+}

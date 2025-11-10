@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}レンタル申請 - MURAシェア{% endblock %}
+{% block content %}
+<h1 class="h5 mb-3">{{ product.title }} をレンタル申請</h1>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button class="btn btn-success">申請する</button>
+</form>
+{% endblock %}

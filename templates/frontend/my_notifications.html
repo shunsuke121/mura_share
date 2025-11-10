@@ -1,0 +1,17 @@
+<!-- my_notifications.html -->
+{% extends "base.html" %}
+{% block title %}通知{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">通知</h1>
+<ul class="list-group">
+  {% for n in object_list %}
+    <li class="list-group-item">
+      <span class="badge bg-secondary me-2">{{ n.kind }}</span>
+      {{ n.body }}
+      <span class="text-muted small float-end">{{ n.created_at }}</span>
+    </li>
+  {% empty %}
+    <li class="list-group-item text-muted">通知はまだありません。</li>
+  {% endfor %}
+</ul>
+{% endblock %}

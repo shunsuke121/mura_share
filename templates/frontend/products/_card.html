@@ -1,0 +1,23 @@
+<div class="card h-100 border-0 shadow-sm">
+  <a href="{% url 'frontend:product_detail' p.id %}">
+    <div class="ratio ratio-1x1 bg-light">
+      {% if p.image_url %}
+        <img src="{{ p.image_url }}" class="object-fit-cover rounded-top" alt="">
+      {% else %}
+        <div class="d-flex align-items-center justify-content-center text-muted">📦</div>
+      {% endif %}
+    </div>
+  </a>
+  <div class="card-body p-2">
+    {% if p.daily_price %}
+      <div class="small fw-semibold">¥{{ p.daily_price|floatformat:0 }}/日</div>
+    {% elif p.sale_price %}
+      <div class="small fw-semibold">¥{{ p.sale_price|floatformat:0 }}</div>
+    {% endif %}
+    <div class="small fw-bold text-truncate">{{ p.title }}</div>
+    <div class="text-muted small text-truncate">{{ p.category }}</div>
+    {% if p.average_rating %}
+      <div class="mt-1 text-warning small">★ {{ p.average_rating|floatformat:1 }}（{{ p.review_count|default:0 }}）</div>
+    {% endif %}
+  </div>
+</div>

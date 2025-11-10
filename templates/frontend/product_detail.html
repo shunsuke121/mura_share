@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ object.title }} - MURAシェア{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-6">
+    {% for img in object.images.all %}
+      <img src="{{ img.image.url }}" class="img-fluid mb-2" alt="image">
+    {% empty %}<div class="text-muted">画像なし</div>
+    {% endfor %}
+  </div>
+  <div class="col-lg-6">
+    <h2 class="h4">{{ object.title }}</h2>
+    <div class="mb-2">{{ object.description|linebreaksbr }}</div>
+    <div class="mb-3"><span class="badge bg-secondary">{{ object.category }}</span></div>
+    {% if object.price_per_day %}<div class="mb-3">レンタル: <strong>{{ object.price_per_day }} 円/日</strong></div>{% endif %}
+    {% if object.price_buy %}<div class="mb-3">販売: <strong>{{ object.price_buy }} 円</strong></div>{% endif %}
+
+    {% if user.is_authenticated and user != object.owner %}
+      <hr>
+      <h3 class="h6">レンタル申請</h3>
+      <form method="post" action="{% url 'rental_request' object.pk %}">
+        {% csrf_token %}
+        <div class="row g-2">
+          <div class="col"><input type="date" name="start_date" class="form-control" required></div>
+          <div class="col"><input type="date" name="end_date" class="form-control" required></div>
+        </div>
+        <button class="btn btn-success mt-2">申請する</button>
+      </form>
+    {% elif not user.is_authenticated %}
+      <a href="{% url 'frontend:login' %}" class="btn btn-outline-primary">ログインしてレンタル申請</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

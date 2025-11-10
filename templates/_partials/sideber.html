@@ -1,0 +1,15 @@
+<!-- templates/_partials/sidebar.html -->
+<nav class="list-group list-group-flush small">
+  <a class="list-group-item list-group-item-action" href="{% url 'frontend:products' %}">ダッシュボード / 商品一覧</a>
+  <a class="list-group-item list-group-item-action" href="{% url 'frontend:product_new' %}">出品</a>
+  <a class="list-group-item list-group-item-action" href="{% url 'frontend:purchases' %}">購入管理</a>
+  <a class="list-group-item list-group-item-action" href="{% url 'frontend:rentals' %}">レンタル管理</a>
+  <a class="list-group-item list-group-item-action" href="{% url 'frontend:returns' %}">返品管理</a>
+  <a class="list-group-item list-group-item-action" href="{% url 'frontend:messages' %}">メッセージ</a>
+  <a class="list-group-item list-group-item-action" href="{% url 'frontend:profile' %}">設定 / プロフィール</a>
+  <a class="list-group-item list-group-item-action" href="{% url 'frontend:docs' %}">設計書ビュー</a>
+  {% if request.user.is_superuser %}
+    <div class="border-top my-2"></div>
+    <a class="list-group-item list-group-item-action" href="{% url 'frontend:admin_shipping' %}">管理：配送管理</a>
+  {% endif %}
+</nav>

@@ -1,0 +1,21 @@
+<!-- my_rentals.html -->
+{% extends "base.html" %}
+{% block title %}マイレンタル{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">マイレンタル</h1>
+<table class="table table-hover bg-white rounded">
+  <thead><tr><th>商品</th><th>期間</th><th>金額</th><th>状態</th></tr></thead>
+  <tbody>
+  {% for r in object_list %}
+    <tr>
+      <td><a href="{% url 'product_detail' r.product.pk %}">{{ r.product.title }}</a></td>
+      <td>{{ r.start_date }} ～ {{ r.end_date }}</td>
+      <td>{{ r.total_price }} 円</td>
+      <td>{{ r.get_status_display|default:r.status }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="4" class="text-muted">まだレンタル申請がありません。</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

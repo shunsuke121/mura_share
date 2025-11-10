@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}商品一覧 - MURAシェア{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">商品一覧</h1>
+<div class="row g-3">
+  {% for p in object_list %}
+    <div class="col-12 col-sm-6 col-lg-3">
+      <div class="card h-100">
+        {# templates/frontend/product_list.html のカード内 #}
+        {% with img=p.images.first %}
+        {% if img %}
+        <img class="card-img-top" src="{{ img.image.url }}" alt="image">
+        {% else %}
+        <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height:160px;">No Image</div>
+        {% endif %}
+        {% endwith %}
+        <div class="card-body">
+          <h5 class="card-title">{{ p.title }}</h5>
+          <p class="card-text small text-muted mb-2">{{ p.category }}</p>
+          {% if p.price_per_day %}<div class="fw-bold">{{ p.price_per_day }} 円/日</div>{% endif %}
+          <a class="btn btn-sm btn-primary mt-2" href="{% url 'frontend:product_detail' p.pk %}">見る</a>
+        </div>
+      </div>
+    </div>
+  {% empty %}
+    <p>まだ商品がありません。</p>
+  {% endfor %}
+</div>
+{% endblock %}

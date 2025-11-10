@@ -1,0 +1,23 @@
+<!-- my_products.html -->
+{% extends "base.html" %}
+{% block title %}マイ出品{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">マイ出品</h1>
+<div class="row g-3">
+  {% for p in object_list %}
+  <div class="col-12 col-sm-6 col-lg-3">
+    <div class="card h-100">
+      {% with img=p.images.first %}
+        {% if img %}<img src="{{ img.image.url }}" class="card-img-top" alt="img">{% endif %}
+      {% endwith %}
+      <div class="card-body">
+        <h5 class="card-title">{{ p.title }}</h5>
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'product_detail' p.pk %}">詳細</a>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+    <p>出品はまだありません。</p>
+  {% endfor %}
+</div>
+{% endblock %}
