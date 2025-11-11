@@ -121,19 +121,21 @@
     <div>
       <div class="sidebar-header">MURAシェア</div>
       <ul class="menu">
-        <li><a href="{% url 'products' %}">ホーム</a></li>
-        <li><a href="{% url 'product_new' %}">商品を投稿</a></li>
-        <li><a href="{% url 'rentals' %}">レンタル管理</a></li>
-        <li><a href="{% url 'purchases' %}">購入管理</a></li>
-        <li><a href="{% url 'returns' %}">返却管理</a></li>
-        <li class="active"><a href="{% url 'messages' %}">メッセージ</a></li>
-        <li><a href="{% url 'profile' %}">プロフィール</a></li>
-        <li><a href="{% url 'docs' %}">設計書</a></li>
+        <li><a href="{% url 'frontend:products' %}">ホーム</a></li>
+        <li><a href="{% url 'frontend:product_new' %}">商品を投稿</a></li>
+        <li><a href="{% url 'frontend:rentals' %}">レンタル管理</a></li>
+        <li><a href="{% url 'frontend:purchases' %}">購入管理</a></li>
+        <li><a href="{% url 'frontend:returns' %}">返却管理</a></li>
+        <li class="active"><a href="{% url 'frontend:messages' %}">メッセージ</a></li>
+        <li><a href="{% url 'frontend:profile' %}">プロフィール</a></li>
+        <li><a href="{% url 'frontend:docs' %}">設計書</a></li>
+
       </ul>
     </div>
     <div class="sidebar-footer">
       {{ user.username }}<br>
-      <form method="post" action="{% url 'logout' %}">
+      <form method="post" action="{% url 'frontend:logout' %}">
+
         {% csrf_token %}
         <button type="submit" class="logout-button">ログアウト</button>
       </form>
