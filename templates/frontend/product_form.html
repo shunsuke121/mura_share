@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% comment %} {% extends "base.html" %}
 {% block title %}出品 - MURAシェア{% endblock %}
 {% block content %}
 <h1 class="h4">出品</h1>
@@ -11,4 +11,266 @@
   </div>
   <button class="btn btn-primary">登録</button>
 </form>
-{% endblock %}
+{% endblock %} {% endcomment %}
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>商品を投稿 - MURAシェア</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+      background-color: #f7f8fa;
+      color: #333;
+    }
+
+    .app-container {
+      display: flex;
+    }
+
+    /* サイドバー */
+    .sidebar {
+      width: 240px;
+      background: #fff;
+      height: 100vh;
+      border-right: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: fixed;
+      left: 0;
+      top: 0;
+    }
+
+    .logo {
+      text-align: center;
+      padding: 20px;
+      font-size: 20px;
+      font-weight: bold;
+      background: linear-gradient(90deg, #f06292, #ba68c8);
+      color: #fff;
+    }
+
+    .nav-menu ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .nav-menu li a {
+      display: flex;
+      align-items: center;
+      padding: 12px 20px;
+      color: #444;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+
+    .nav-menu li a:hover,
+    .nav-menu li.active a {
+      background-color: #f0f0f5;
+      font-weight: bold;
+    }
+
+    .material-icons {
+      margin-right: 10px;
+    }
+
+    .profile-area {
+      padding: 15px;
+      border-top: 1px solid #ddd;
+      text-align: center;
+    }
+
+    .avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 10px;
+    }
+
+    .user-name {
+      font-weight: bold;
+      margin: 0;
+    }
+
+    .profile-link {
+      font-size: 13px;
+      color: #888;
+      text-decoration: none;
+    }
+
+    .logout-btn {
+      margin-top: 10px;
+      background-color: #f06292;
+      border: none;
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .logout-btn:hover {
+      background-color: #ec407a;
+    }
+
+    /* メイン */
+    .main-content {
+      margin-left: 240px;
+      padding: 40px;
+      flex-grow: 1;
+    }
+
+    .product-form-section h1 {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .form-card {
+      background: #fff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .form-group {
+      margin-bottom: 25px;
+    }
+
+    .form-group label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .required {
+      color: #f06292;
+      font-size: 14px;
+    }
+
+    .upload-box {
+      border: 2px dashed #ccc;
+      padding: 30px;
+      border-radius: 8px;
+      text-align: center;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+
+    .upload-box:hover {
+      background-color: #fafafa;
+    }
+
+    .upload-icon {
+      font-size: 40px;
+      color: #999;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    .submit-btn {
+      background: linear-gradient(90deg, #f06292, #ba68c8);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: opacity 0.2s;
+    }
+
+    .submit-btn:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+
+<body>
+<div class="app-container">
+  <!-- サイドバー -->
+  <aside class="sidebar">
+    <div>
+      <div class="logo">MURAシェア</div>
+      <nav class="nav-menu">
+        <ul>
+          <li><a href="{% url 'frontend:products' %}"><span class="material-icons">home</span> ホーム</a></li>
+          <li class="active"><a href="{% url 'frontend:product_new' %}"><span class="material-icons">add_box</span> 商品を投稿</a></li>
+          <li><a href="{% url 'frontend:rentals' %}"><span class="material-icons">event</span> レンタル管理</a></li>
+          <li><a href="{% url 'frontend:purchases' %}"><span class="material-icons">shopping_cart</span> 購入管理</a></li>
+          <li><a href="{% url 'frontend:returns' %}"><span class="material-icons">undo</span> 返却管理</a></li>
+          <li><a href="{% url 'frontend:messages' %}"><span class="material-icons">chat</span> メッセージ</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="profile-area">
+      <img src="{% static 'images/default-avatar.png' %}" alt="プロフィール画像" class="avatar">
+      <p class="user-name">{{ user.username }}</p>
+      <a href="{% url 'frontend:profile' %}" class="profile-link">プロフィールを表示</a>
+      <form method="post" action="{% url 'frontend:logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="logout-btn">ログアウト</button>
+      </form>
+    </div>
+  </aside>
+
+  <!-- メイン -->
+  <main class="main-content">
+    <section class="product-form-section">
+      <h1>商品を投稿</h1>
+      <p>あなたの商品をシェアしましょう</p>
+
+      <div class="form-card">
+        <form method="post" enctype="multipart/form-data" action="{% url 'frontend:product_new' %}">
+          {% csrf_token %}
+
+          <div class="form-group">
+            <label>🖼️ 商品画像</label>
+            <p class="required">メイン画像 *</p>
+            <input type="file" name="main_image" accept="image/*" required class="form-control mb-3">
+            <label>追加画像 (最大3枚)</label>
+            <input type="file" name="extra_images" accept="image/*" multiple class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label>📋 商品名 *</label>
+            <input type="text" name="name" placeholder="商品の名前を入力" required>
+          </div>
+
+          <div class="form-group">
+            <label>💰 料金 (1日あたり) *</label>
+            <input type="number" name="price_per_day" min="0" placeholder="例：500" required>
+          </div>
+
+          <div class="form-group">
+            <label>📝 商品説明 *</label>
+            <textarea name="description" rows="4" placeholder="商品の詳細や注意事項を入力" required></textarea>
+          </div>
+
+          <div class="text-center">
+            <button type="submit" class="submit-btn">投稿する</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+</div>
+</body>
+</html>
