@@ -1,19 +1,194 @@
 {% extends "base.html" %}
+{% block title %}商品を投稿 - MURAシェア{% endblock %}
 {% block content %}
-<h2 class="h4 mb-3">新規出品</h2>
-<form method="post">{% csrf_token %}
-  <div class="row g-3">
-    {% for field in form %}
-      <div class="col-12">
-        <label class="form-label">{{ field.label }}</label>
-        {{ field }}
-        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-        {% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+<div class="container py-4">
+
+  {% if messages %}
+    <div class="mb-3">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} mb-2" role="alert">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <h2 class="mb-4">商品を投稿</h2>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    {# 画像 #}
+    <div class="card mb-4 border-0 shadow-sm">
+      <div class="card-header bg-white border-0">
+        <h5 class="mb-0">商品画像</h5>
       </div>
-    {% endfor %}
-  </div>
-  <div class="mt-3">
-    <button class="btn btn-dark">保存</button>
-  </div>
-</form>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">メイン画像 <span class="text-danger">*</span></label>
+          <input type="file" name="image_main" class="form-control" accept="image/*" required>
+          <small class="form-text text-muted">PNG, JPG, GIF (最大 10MB)</small>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">追加画像（最大3枚）</label>
+        </div>
+        <div class="row g-2">
+          <div class="col-md-4">
+            <input type="file" name="image_sub1" class="form-control" accept="image/*">
+          </div>
+          <div class="col-md-4">
+            <input type="file" name="image_sub2" class="form-control" accept="image/*">
+          </div>
+          <div class="col-md-4">
+            <input type="file" name="image_sub3" class="form-control" accept="image/*">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# 基本情報 #}
+    <div class="card mb-4 border-0 shadow-sm">
+      <div class="card-header bg-white border-0">
+        <h5 class="mb-0">基本情報</h5>
+      </div>
+      <div class="card-body">
+
+        <div class="mb-3">
+          <label class="form-label">商品名 <span class="text-danger">*</span></label>
+          <input type="text" name="title" class="form-control"
+                 value="{{ form_data.title|default_if_none:'' }}"
+                 placeholder="例: キャンプ用テント" required>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">商品説明 <span class="text-danger">*</span></label>
+          <textarea name="description" class="form-control" rows="4" required
+                    placeholder="商品の特徴や状態を詳しく説明してください">{{ form_data.description|default_if_none:'' }}</textarea>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">カテゴリー <span class="text-danger">*</span></label>
+            <select name="category" class="form-select" required>
+              <option value="">選択してください</option>
+              {% with c=form_data.category %}
+                <option value="電子機器"      {% if c == "電子機器" %}selected{% endif %}>電子機器</option>
+                <option value="家具"          {% if c == "家具" %}selected{% endif %}>家具</option>
+                <option value="スポーツ用品"  {% if c == "スポーツ用品" %}selected{% endif %}>スポーツ用品</option>
+                <option value="楽器"          {% if c == "楽器" %}selected{% endif %}>楽器</option>
+                <option value="車両"          {% if c == "車両" %}selected{% endif %}>車両</option>
+                <option value="アウトドア用品"{% if c == "アウトドア用品" %}selected{% endif %}>アウトドア用品</option>
+                <option value="ファッション"  {% if c == "ファッション" %}selected{% endif %}>ファッション</option>
+                <option value="書籍・メディア"{% if c == "書籍・メディア" %}selected{% endif %}>書籍・メディア</option>
+                <option value="その他"        {% if c == "その他" %}selected{% endif %}>その他</option>
+              {% endwith %}
+            </select>
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <label class="form-label">商品の状態 <span class="text-danger">*</span></label>
+            <select name="condition" class="form-select" required>
+              <option value="">選択してください</option>
+              {% with cond=form_data.condition %}
+                <option value="新品"       {% if cond == "新品" %}selected{% endif %}>新品</option>
+                <option value="ほぼ新品"   {% if cond == "ほぼ新品" %}selected{% endif %}>ほぼ新品</option>
+                <option value="良好"       {% if cond == "良好" %}selected{% endif %}>良好</option>
+                <option value="使用感あり" {% if cond == "使用感あり" %}selected{% endif %}>使用感あり</option>
+                <option value="傷や汚れあり"{% if cond == "傷や汚れあり" %}selected{% endif %}>傷や汚れあり</option>
+              {% endwith %}
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">在庫数 <span class="text-danger">*</span></label>
+          <input type="number" name="stock_quantity" class="form-control" min="1"
+                 value="{{ form_data.stock_quantity|default:1 }}" required>
+        </div>
+
+      </div>
+    </div>
+
+    {# 提供方法と料金 #}
+    <div class="card mb-4 border-0 shadow-sm">
+      <div class="card-header bg-white border-0">
+        <h5 class="mb-0">提供方法と料金</h5>
+      </div>
+      <div class="card-body">
+
+        <div class="mb-3">
+          <label class="form-label">提供方法 <span class="text-danger">*</span></label>
+          {% with at=form_data.availability_type|default:"レンタル・販売両方" %}
+          <select name="availability_type" class="form-select">
+            <option value="レンタルのみ"       {% if at == "レンタルのみ" %}selected{% endif %}>レンタルのみ</option>
+            <option value="販売のみ"           {% if at == "販売のみ" %}selected{% endif %}>販売のみ</option>
+            <option value="レンタル・販売両方" {% if at == "レンタル・販売両方" %}selected{% endif %}>レンタル・販売両方</option>
+          </select>
+          {% endwith %}
+        </div>
+
+        <div class="row">
+          <div class="col-md-6">
+            <div class="border rounded p-3 mb-3">
+              <h6 class="mb-2">レンタル設定</h6>
+              <div class="mb-2">
+                <label class="form-label">1日あたりの料金（円）</label>
+                <input type="number" name="daily_price" class="form-control" min="0"
+                       value="{{ form_data.daily_price|default_if_none:'' }}" placeholder="1000">
+              </div>
+              <div class="row">
+                <div class="col-6 mb-2">
+                  <label class="form-label">最小日数</label>
+                  <input type="number" name="min_rental_days" class="form-control" min="1"
+                         value="{{ form_data.min_rental_days|default:1 }}">
+                </div>
+                <div class="col-6 mb-2">
+                  <label class="form-label">最大日数</label>
+                  <input type="number" name="max_rental_days" class="form-control" min="1"
+                         value="{{ form_data.max_rental_days|default:30 }}">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="border rounded p-3 mb-3">
+              <h6 class="mb-2">販売設定</h6>
+              <div class="mb-2">
+                <label class="form-label">販売価格（円）</label>
+                <input type="number" name="sale_price" class="form-control" min="0"
+                       value="{{ form_data.sale_price|default_if_none:'' }}" placeholder="10000">
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    {# 注意事項 #}
+    <div class="card mb-4 border-0 shadow-sm">
+      <div class="card-header bg-white border-0">
+        <h5 class="mb-0">注意事項</h5>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">借り手・購入者への注意事項（任意）</label>
+          <textarea name="owner_notes" class="form-control" rows="3"
+                    placeholder="使用上の注意点や特記事項があれば記載してください">{{ form_data.owner_notes|default_if_none:'' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-5">
+      <a href="{% url 'frontend:products' %}" class="btn btn-outline-secondary flex-fill">
+        キャンセル
+      </a>
+      <button type="submit" class="btn btn-dark flex-fill">
+        商品を投稿
+      </button>
+    </div>
+  </form>
+</div>
 {% endblock %}
