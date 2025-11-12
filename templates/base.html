@@ -15,15 +15,25 @@
         ☰
       </button>
       <a class="navbar-brand ms-2" href="/">MURAシェア</a>
-      <div class="ms-auto">
-        + {% if user.is_authenticated %}
-+   <a href="{% url 'frontend:product_new' %}" class="btn btn-primary me-2 d-none d-sm-inline-block">出品する</a>
-+   <a href="{% url 'frontend:logout' %}" class="btn btn-outline-secondary">ログアウト</a>
-+ {% else %}
-+   <a href="{% url 'frontend:signup' %}" class="btn btn-primary me-2">新規登録</a>
-+   <a href="{% url 'frontend:login' %}" class="btn btn-outline-secondary">ログイン</a>
-+ {% endif %}
+            <div class="ms-auto">
+        {% if user.is_authenticated %}
+          <a href="{% url 'frontend:product_new' %}"
+            class="btn btn-primary me-2 d-none d-sm-inline-block">
+            出品する
+          </a>
+          <a href="{% url 'frontend:logout' %}" class="btn btn-outline-secondary">
+            ログアウト
+          </a>
+        {% else %}
+          <a href="{% url 'frontend:signup' %}" class="btn btn-primary me-2">
+            新規登録
+          </a>
+          <a href="{% url 'frontend:login' %}" class="btn btn-outline-secondary">
+            ログイン
+          </a>
+        {% endif %}
       </div>
+
     </div>
   </header>
 

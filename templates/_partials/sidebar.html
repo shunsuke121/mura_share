@@ -1,15 +1,120 @@
-<!-- templates/_partials/sidebar.html -->
-<nav class="list-group list-group-flush small">
-  <a class="list-group-item list-group-item-action" href="{% url 'frontend:products' %}">ダッシュボード / 商品一覧</a>
-  <a class="list-group-item list-group-item-action" href="{% url 'frontend:product_new' %}">出品</a>
-  <a class="list-group-item list-group-item-action" href="{% url 'frontend:purchases' %}">購入管理</a>
-  <a class="list-group-item list-group-item-action" href="{% url 'frontend:rentals' %}">レンタル管理</a>
-  <a class="list-group-item list-group-item-action" href="{% url 'frontend:returns' %}">返品管理</a>
-  <a class="list-group-item list-group-item-action" href="{% url 'frontend:messages' %}">メッセージ</a>
-  <a class="list-group-item list-group-item-action" href="{% url 'frontend:profile' %}">設定 / プロフィール</a>
-  <a class="list-group-item list-group-item-action" href="{% url 'frontend:docs' %}">設計書ビュー</a>
-  {% if request.user.is_superuser %}
-    <div class="border-top my-2"></div>
-    <a class="list-group-item list-group-item-action" href="{% url 'frontend:admin_shipping' %}">管理：配送管理</a>
-  {% endif %}
+{# templates/_partials/sidebar.html #}
+<nav class="sidebar-nav d-flex flex-column h-100">
+
+  <div class="d-flex align-items-center mb-3 sidebar-nav-header">
+    <div class="sidebar-logo me-2 d-flex align-items-center justify-content-center">
+      MS
+    </div>
+    <div class="flex-grow-1">
+      <div class="sidebar-title">MURAシェア</div>
+      <div class="sidebar-subtitle">シェア & レンタル</div>
+    </div>
+  </div>
+
+  <div class="sidebar-divider mb-2"></div>
+
+  <div class="sidebar-group mb-2">
+    <div class="sidebar-group-label">メイン</div>
+    <a
+      href="{% url 'frontend:products' %}"
+      class="sidebar-link {% if request.resolver_match.url_name == 'products' %}is-active{% endif %}"
+    >
+      <span class="sidebar-icon bi bi-grid"></span>
+      <span class="sidebar-text">商品一覧</span>
+    </a>
+
+    <a
+      href="{% url 'frontend:product_new' %}"
+      class="sidebar-link {% if request.resolver_match.url_name == 'product_new' %}is-active{% endif %}"
+    >
+      <span class="sidebar-icon bi bi-plus-square"></span>
+      <span class="sidebar-text">商品を投稿</span>
+    </a>
+  </div>
+
+  <div class="sidebar-group mb-2">
+    <div class="sidebar-group-label">取引</div>
+
+    <a
+      href="{% url 'frontend:purchases' %}"
+      class="sidebar-link {% if request.resolver_match.url_name == 'purchases' %}is-active{% endif %}"
+    >
+      <span class="sidebar-icon bi bi-bag-check"></span>
+      <span class="sidebar-text">購入履歴</span>
+    </a>
+
+    <a
+      href="{% url 'frontend:rentals' %}"
+      class="sidebar-link {% if request.resolver_match.url_name == 'rentals' %}is-active{% endif %}"
+    >
+      <span class="sidebar-icon bi bi-arrow-left-right"></span>
+      <span class="sidebar-text">レンタル中</span>
+    </a>
+
+    <a
+      href="{% url 'frontend:returns' %}"
+      class="sidebar-link {% if request.resolver_match.url_name == 'returns' %}is-active{% endif %}"
+    >
+      <span class="sidebar-icon bi bi-box-arrow-in-left"></span>
+      <span class="sidebar-text">返却・ステータス</span>
+    </a>
+
+    <a
+      href="{% url 'frontend:messages' %}"
+      class="sidebar-link {% if request.resolver_match.url_name == 'messages' %}is-active{% endif %}"
+    >
+      <span class="sidebar-icon bi bi-chat-dots"></span>
+      <span class="sidebar-text">メッセージ</span>
+    </a>
+  </div>
+
+  <div class="sidebar-group mb-2">
+    <div class="sidebar-group-label">アカウント</div>
+
+    <a
+      href="{% url 'frontend:profile' %}"
+      class="sidebar-link {% if request.resolver_match.url_name == 'profile' %}is-active{% endif %}"
+    >
+      <span class="sidebar-icon bi bi-person-circle"></span>
+      <span class="sidebar-text">プロフィール</span>
+    </a>
+
+    <a
+      href="{% url 'frontend:docs' %}"
+      class="sidebar-link {% if request.resolver_match.url_name == 'docs' %}is-active{% endif %}"
+    >
+      <span class="sidebar-icon bi bi-book"></span>
+      <span class="sidebar-text">使い方ガイド</span>
+    </a>
+
+    <a
+      href="{% url 'frontend:admin_shipping' %}"
+      class="sidebar-link {% if request.resolver_match.url_name == 'admin_shipping' %}is-active{% endif %}"
+    >
+      <span class="sidebar-icon bi bi-box-seam"></span>
+      <span class="sidebar-text">発送管理</span>
+    </a>
+  </div>
+
+  <div class="mt-auto pt-3 sidebar-footer small">
+    {% if request.user.is_authenticated %}
+      <div class="d-flex align-items-center">
+        <div class="sidebar-avatar me-2">
+          {{ request.user.username|first|upper }}
+        </div>
+        <div class="flex-grow-1">
+          <div class="sidebar-user-name">
+            {{ request.user.username }}
+          </div>
+          <div class="sidebar-user-email text-truncate">
+            {{ request.user.email }}
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="text-muted">
+        ログインしていません
+      </div>
+    {% endif %}
+  </div>
 </nav>
