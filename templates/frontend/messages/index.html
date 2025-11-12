@@ -1,168 +1,60 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MURAシェア - メッセージ</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: "Segoe UI", sans-serif;
-      background-color: #f7f8fa;
-      color: #333;
-    }
+{% extends "base.html" %}
+{% block title %}メッセージ - MURAシェア{% endblock %}
 
-    /* サイドバー */
-    .sidebar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 220px;
-      height: 100vh;
-      background-color: #fff;
-      border-right: 1px solid #ddd;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
+{% block content %}
+<style>
+  .page-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-align: center;
+  }
 
-    .sidebar-header {
-      padding: 20px;
-      font-weight: bold;
-      font-size: 18px;
-      background: linear-gradient(90deg, #f06292, #ba68c8);
-      color: white;
-      text-align: center;
-    }
+  .chat-list {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
 
-    .menu {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
+  .chat-empty-icon {
+    font-size: 48px;
+    color: #bbb;
+    margin-bottom: 15px;
+  }
 
-    .menu li {
-      padding: 12px 20px;
-      cursor: pointer;
-      color: #444;
-      transition: background 0.2s;
-    }
+  .chat-empty-text {
+    font-size: 16px;
+    color: #555;
+  }
 
-    .menu li:hover,
-    .menu li.active {
-      background-color: #f0f0f5;
-      font-weight: bold;
-    }
+  .chat-empty-subtext {
+    font-size: 14px;
+    color: #777;
+    margin-top: 5px;
+  }
+</style>
 
-    .sidebar-footer {
-      padding: 15px;
-      text-align: center;
-      border-top: 1px solid #ddd;
-      font-size: 14px;
-      color: #666;
-    }
+<div class="container py-4">
+  <div class="page-title">メッセージ</div>
 
-    /* メインコンテンツ */
-    .main {
-      margin-left: 220px;
-      padding: 30px 40px;
-    }
-
-    .page-title {
-      font-size: 24px;
-      font-weight: bold;
-      margin-bottom: 20px;
-      text-align: center;
-    }
-
-    .chat-list {
-      background: white;
-      border-radius: 8px;
-      padding: 40px;
-      text-align: center;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .chat-empty-icon {
-      font-size: 48px;
-      color: #bbb;
-      margin-bottom: 15px;
-    }
-
-    .chat-empty-text {
-      font-size: 16px;
-      color: #555;
-    }
-
-    .chat-empty-subtext {
-      font-size: 14px;
-      color: #777;
-      margin-top: 5px;
-    }
-
-    .logout-button {
-      background-color: #f06292;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .logout-button:hover {
-      background-color: #ec407a;
-    }
-  </style>
-</head>
-<body>
-  <!-- サイドバー -->
-  <div class="sidebar">
-    <div>
-      <div class="sidebar-header">MURAシェア</div>
-      <ul class="menu">
-        <li><a href="{% url 'frontend:products' %}">ホーム</a></li>
-        <li><a href="{% url 'frontend:product_new' %}">商品を投稿</a></li>
-        <li><a href="{% url 'frontend:rentals' %}">レンタル管理</a></li>
-        <li><a href="{% url 'frontend:purchases' %}">購入管理</a></li>
-        <li><a href="{% url 'frontend:returns' %}">返却管理</a></li>
-        <li class="active"><a href="{% url 'frontend:messages' %}">メッセージ</a></li>
-        <li><a href="{% url 'frontend:profile' %}">プロフィール</a></li>
-        <li><a href="{% url 'frontend:docs' %}">設計書</a></li>
-
-      </ul>
-    </div>
-    <div class="sidebar-footer">
-      {{ user.username }}<br>
-      <form method="post" action="{% url 'frontend:logout' %}">
-
-        {% csrf_token %}
-        <button type="submit" class="logout-button">ログアウト</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- メイン -->
-  <div class="main">
-    <div class="page-title">メッセージ</div>
-
-    <div class="chat-list">
-      {% if messages_list %}
-        {% for chat in messages_list %}
-          <div class="chat-item">
-            <strong>{{ chat.sender.username }}</strong> さんとのチャット<br>
-            <a href="{% url 'chat_detail' chat.id %}">開く</a>
-          </div>
-          <hr>
-        {% endfor %}
-      {% else %}
-        <div class="chat-empty-icon">💬</div>
-        <div class="chat-empty-text">チャットがありません</div>
-        <div class="chat-empty-subtext">
-          商品ページから出品者にメッセージを送ってみましょう！
+  <div class="chat-list">
+    {% if messages_list %}
+      {% for chat in messages_list %}
+        <div class="chat-item">
+          <strong>{{ chat.sender.username }}</strong> さんとのチャット<br>
+          <a href="{% url 'chat_detail' chat.id %}">開く</a>
         </div>
-      {% endif %}
-    </div>
+        <hr>
+      {% endfor %}
+    {% else %}
+      <div class="chat-empty-icon">💬</div>
+      <div class="chat-empty-text">チャットがありません</div>
+      <div class="chat-empty-subtext">
+        商品ページから出品者にメッセージを送ってみましょう！
+      </div>
+    {% endif %}
   </div>
-</body>
-</html>
+</div>
+{% endblock %}

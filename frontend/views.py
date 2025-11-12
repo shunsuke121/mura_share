@@ -3,6 +3,9 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib import messages
+from accounts.models import Profile
+from marketplace.models import Product, ProductImage
+
 
 from marketplace.models import Product
 from django.views.generic import ListView, DetailView, TemplateView
@@ -23,8 +26,14 @@ class ProductListView(ListView):
 
 class ProductDetailView(DetailView):
     model = Product
-    template_name = "frontend/products/detail.html"  # 詳細テンプレ
+    template_name = "frontend/products/detail.html"
     context_object_name = "product"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["images"] = self.object.images.all()
+        return ctx
+
 
 class PurchaseListView(TemplateView):
     template_name = "frontend/purchases/index.html"
@@ -53,9 +62,10 @@ class AdminShippingView(TemplateView):
 @login_required
 def product_create(request):
     user = request.user
+    profile, _ = Profile.objects.get_or_create(user=user)
 
     # 住所必須チェック
-    if not getattr(user, "address", None):
+    if not profile.address:
         messages.warning(request, "商品を投稿するには、まずプロフィールで住所を登録してください。")
         return redirect("frontend:profile")
 
@@ -160,17 +170,13 @@ def product_create(request):
             average_rating=0,
             review_count=0,
         )
-
-        # 画像
-        product.image_main = image_main
-        if image_sub1:
-            product.image_sub1 = image_sub1
-        if image_sub2:
-            product.image_sub2 = image_sub2
-        if image_sub3:
-            product.image_sub3 = image_sub3
-
         product.save()
+
+        if image_main:
+            ProductImage.objects.create(product=product, image=image_main)
+        for img in [image_sub1, image_sub2, image_sub3]:
+            if img:
+                ProductImage.objects.create(product=product, image=img)
 
         messages.success(request, "商品を投稿しました。")
         return redirect("frontend:products")

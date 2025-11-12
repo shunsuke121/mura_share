@@ -292,3 +292,37 @@ body {
   border: 3px solid rgba(148, 163, 184, 0.5);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
 }
+
+/* 入力まわりを全部白ベースにリセット */
+
+.form-control,
+.form-select {
+  background-color: #ffffff !important;
+  color: #111827 !important;   /* 濃いグレーの文字 */
+  border-color: #e5e7eb !important;
+}
+
+.form-control::placeholder {
+  color: #9ca3af !important;   /* 薄いグレー */
+}
+
+/* ファイル入力（.form-control-file 使ってたらこっちも） */
+input[type="file"].form-control,
+input[type="file"] {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+/* テキストエリアも念のため */
+textarea.form-control {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+/* PCサイズのとき、コンテンツ幅を少し狭める */
+@media (min-width: 992px) {
+  .page-inner {
+    max-width: 960px;   /* 好きな値に調整してOK（800～1000くらい） */
+    margin: 0 auto;
+  }
+}

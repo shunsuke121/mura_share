@@ -7,6 +7,7 @@ from django.contrib import messages
 from rest_framework import generics, permissions, response, views
 
 from .serializers import RegisterSerializer
+from .models import Profile
 from marketplace.models import Product
 
 User = get_user_model()
@@ -23,26 +24,23 @@ class MeView(views.APIView):
 
     def get(self, request):
         u = request.user
+        profile, _ = Profile.objects.get_or_create(user=u)
 
         profile_image_url = None
-        if hasattr(u, "profile_image") and getattr(u, "profile_image"):
+        if profile.profile_image:
             try:
-                profile_image_url = u.profile_image.url
+                profile_image_url = profile.profile_image.url
             except Exception:
                 profile_image_url = None
-        if not profile_image_url and hasattr(u, "profile_image_url"):
-            profile_image_url = getattr(u, "profile_image_url")
 
         return response.Response({
             "id": u.id,
             "username": u.get_username(),
             "email": u.email,
-            # display_name があればそれ、なければ username
-            "display_name": getattr(u, "display_name", "") or u.get_username(),
-            # full_name はもう使わないので空で返す（互換用なら一応残す）
+            "display_name": profile.display_name or u.get_username(),
             "full_name": "",
-            "phone": getattr(u, "phone", ""),
-            "address": getattr(u, "address", ""),
+            "phone": profile.phone,
+            "address": profile.address,
             "profile_image_url": profile_image_url,
             "rating": getattr(u, "rating", None),
             "completed_rentals": getattr(u, "completed_rentals", 0),
@@ -54,6 +52,8 @@ class MeView(views.APIView):
 @login_required
 def profile_view(request):
     user = request.user
+    profile, _ = Profile.objects.get_or_create(user=user)
+
     active_tab = request.GET.get("tab", "info")
     editing = request.GET.get("edit") == "1"
 
@@ -63,32 +63,24 @@ def profile_view(request):
         address = request.POST.get("address", "").strip()
         profile_image = request.FILES.get("profile_image")
 
-        original_address = getattr(user, "address", None)
+        original_address = profile.address
 
-        # display_name フィールドがあればそこに入れる
-        if hasattr(user, "display_name"):
-            user.display_name = display_name
-        else:
-            # なければとりあえず first_name にでも入れておく（いらないならここ消してもOK）
-            if hasattr(user, "first_name"):
-                user.first_name = display_name
+        if display_name:
+            profile.display_name = display_name
+        profile.phone = phone
+        profile.address = address
 
-        if hasattr(user, "phone"):
-            user.phone = phone
-        if hasattr(user, "address"):
-            user.address = address
+        if profile_image is not None:
+            profile.profile_image = profile_image
 
-        if profile_image is not None and hasattr(user, "profile_image"):
-            user.profile_image = profile_image
-
-        user.save()
+        profile.save()
 
         if not original_address and address:
             messages.success(request, "住所を登録しました。これで商品の投稿・レンタル・購入が可能になりました。")
         else:
             messages.success(request, "プロフィールを更新しました。")
 
-        return redirect("profile")
+        return redirect("frontend:profile")
 
     my_products = Product.objects.filter(owner=user)
 
@@ -102,6 +94,7 @@ def profile_view(request):
 
     context = {
         "user_obj": user,
+        "profile": profile,  # ← これをテンプレで使う
         "active_tab": active_tab,
         "editing": editing,
         "my_products": my_products,

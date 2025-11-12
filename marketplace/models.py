@@ -7,6 +7,21 @@ User = settings.AUTH_USER_MODEL
 
 
 class Product(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def image_url(self):
+        """一覧・詳細で使うメイン画像URL"""
+        first = self.images.first()
+        if first and first.image:
+            try:
+                return first.image.url
+            except Exception:
+                return ""
+        return ""
     class Status(models.IntegerChoices):
         DRAFT    = 0, "下書き"
         LISTED   = 1, "出品中"
