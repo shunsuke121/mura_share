@@ -1,0 +1,72 @@
+{% comment %} {% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-6 py-8">
+
+  <!-- ユーザープロフィールヘッダー -->
+  <div class="bg-white rounded-2xl shadow p-6 flex items-center gap-6">
+    <!-- アイコン -->
+    <div class="relative">
+      <img src="{% static 'img/default_icon.png' %}" alt="profile" class="w-24 h-24 rounded-full object-cover">
+      <button class="absolute bottom-0 right-0 bg-gray-200 p-2 rounded-full shadow">
+        <i class="fa fa-camera"></i>
+      </button>
+    </div>
+
+    <!-- ユーザー情報 -->
+    <div>
+      <h2 class="text-2xl font-semibold">{{ user.username }}</h2>
+      <p class="text-gray-600">{{ user.email }}</p>
+      <div class="flex items-center gap-3 mt-2">
+        <span class="text-sm bg-yellow-100 text-yellow-700 px-2 py-1 rounded">評価: 5.0</span>
+        <span class="text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded">レンタル中</span>
+        <span class="text-sm bg-purple-100 text-purple-700 px-2 py-1 rounded">一般ユーザー</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- タブメニュー -->
+  <div class="flex justify-center mt-8">
+    <div class="flex border rounded-full overflow-hidden shadow-sm bg-white">
+      <button class="px-6 py-2 text-sm text-gray-500 hover:text-black">基本情報</button>
+      <button class="px-6 py-2 text-sm font-semibold text-white bg-blue-600">私の投稿</button>
+      <button class="px-6 py-2 text-sm text-gray-500 hover:text-black">お気に入り</button>
+      <button class="px-6 py-2 text-sm text-gray-500 hover:text-black">レンタル中</button>
+      <button class="px-6 py-2 text-sm text-gray-500 hover:text-black">取引履歴</button>
+    </div>
+  </div>
+
+  <!-- 投稿一覧 -->
+  <div class="bg-white rounded-2xl shadow p-8 mt-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-lg font-semibold">私の投稿 ({{ posts|length }})</h3>
+      <a href="{% url 'frontend:product_new' %}" class="bg-cyan-500 text-white px-4 py-2 rounded-md hover:bg-cyan-600">新規投稿</a>
+    </div>
+
+    {% if posts %}
+      <!-- 投稿がある場合 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {% for post in posts %}
+        <div class="border rounded-xl shadow-sm p-4">
+          <img src="{{ post.image.url }}" alt="{{ post.title }}" class="w-full h-40 object-cover rounded-lg mb-3">
+          <h4 class="font-semibold text-gray-800">{{ post.title }}</h4>
+          <p class="text-gray-500 text-sm">{{ post.price }}円 / 日</p>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <!-- 投稿がない場合 -->
+      <div class="text-center py-10 text-gray-500">
+        <i class="fa fa-box text-5xl text-gray-300 mb-4"></i>
+        <p class="mb-2">投稿がありません</p>
+        <p class="text-sm mb-4">最初の商品を投稿してみましょう！</p>
+        <a href="{% url 'frontend:product_new' %}" class="bg-cyan-500 text-white px-4 py-2 rounded-md hover:bg-cyan-600">
+          商品を投稿
+        </a>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %} {% endcomment %}

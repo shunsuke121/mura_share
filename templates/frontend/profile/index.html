@@ -4,6 +4,7 @@
 {% block content %}
 <div class="container py-4">
 
+  {# メッセージ #}
   {% if messages %}
     <div class="mb-3">
       {% for message in messages %}
@@ -14,6 +15,7 @@
     </div>
   {% endif %}
 
+  {# ヘッダー部分（共通） #}
   <div class="card shadow-sm mb-4 border-0 profile-header-card">
     <div class="card-body d-flex align-items-center">
       <div class="position-relative me-4">
@@ -50,115 +52,246 @@
     </div>
   </div>
 
+  {# タブ：ここをリンク + active_tab 判定にする #}
   <ul class="nav nav-tabs mb-4">
-    <li class="nav-item"><a class="nav-link active" href="#">基本情報</a></li>
-    <li class="nav-item"><a class="nav-link" href="#">私の投稿</a></li>
-    <li class="nav-item"><a class="nav-link" href="#">お気に入り</a></li>
-    <li class="nav-item"><a class="nav-link" href="#">レンタル中</a></li>
-    <li class="nav-item"><a class="nav-link" href="#">取引履歴</a></li>
+    <li class="nav-item">
+      <a class="nav-link {% if active_tab == 'info' %}active{% endif %}"
+         href="{% url 'frontend:profile' %}?tab=info">
+        基本情報
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if active_tab == 'posts' %}active{% endif %}"
+         href="{% url 'frontend:profile' %}?tab=posts">
+        私の投稿
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if active_tab == 'favorites' %}active{% endif %}"
+         href="{% url 'frontend:profile' %}?tab=favorites">
+        お気に入り
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if active_tab == 'rentals' %}active{% endif %}"
+         href="{% url 'frontend:profile' %}?tab=rentals">
+        レンタル中
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if active_tab == 'history' %}active{% endif %}"
+         href="{% url 'frontend:profile' %}?tab=history">
+        取引履歴
+      </a>
+    </li>
   </ul>
 
-  <div class="card border-0 shadow-sm">
-    <div class="card-body">
-      <h5 class="mb-3">基本情報</h5>
+  {# ================== タブごとの中身 ================== #}
 
-      {% if editing %}
-        <form method="post" enctype="multipart/form-data">
-          {% csrf_token %}
+  {# 基本情報タブ #}
+  {% if active_tab == "info" %}
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <h5 class="mb-3">基本情報</h5>
 
-          <div class="mb-3">
-            <label class="form-label text-muted">プロフィール画像</label>
-            <input type="file" name="profile_image" class="form-control">
-          </div>
+        {% if editing %}
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
 
+            <div class="mb-3">
+              <label class="form-label text-muted">プロフィール画像</label>
+              <input type="file" name="profile_image" class="form-control">
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label text-muted">
+                <i class="bi bi-person me-2"></i>表示名
+              </label>
+              <input
+                type="text"
+                name="display_name"
+                class="form-control"
+                value="{{ profile.display_name|default:user_obj.username }}"
+                placeholder="山田 太郎"
+              >
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label text-muted">
+                <i class="bi bi-telephone me-2"></i>電話番号
+              </label>
+              <input
+                type="text"
+                name="phone"
+                class="form-control"
+                value="{{ profile.phone }}"
+                placeholder="090-1234-5678"
+              >
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label text-muted">
+                <i class="bi bi-geo-alt me-2"></i>住所
+              </label>
+              <input
+                type="text"
+                name="address"
+                class="form-control"
+                value="{{ profile.address }}"
+                placeholder="東京都渋谷区..."
+              >
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">
+                保存
+              </button>
+              <a href="{% url 'frontend:profile' %}" class="btn btn-outline-secondary">
+                キャンセル
+              </a>
+            </div>
+          </form>
+
+        {% else %}
           <div class="mb-3">
             <label class="form-label text-muted">
               <i class="bi bi-person me-2"></i>表示名
             </label>
-            <input
-              type="text"
-              name="display_name"
-              class="form-control"
-              value="{{ profile.display_name|default:user_obj.username }}"
-              placeholder="山田 太郎"
-            >
+            <div class="p-2 bg-light rounded">
+              {{ profile.display_name|default:user_obj.username }}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-muted">
+              <i class="bi bi-envelope me-2"></i>メールアドレス
+            </label>
+            <div class="p-2 bg-light rounded">
+              {{ user_obj.email }}
+            </div>
           </div>
 
           <div class="mb-3">
             <label class="form-label text-muted">
               <i class="bi bi-telephone me-2"></i>電話番号
             </label>
-            <input
-              type="text"
-              name="phone"
-              class="form-control"
-              value="{{ profile.phone }}"
-              placeholder="090-1234-5678"
-            >
+            <div class="p-2 bg-light rounded">
+              {{ profile.phone|default:"未登録" }}
+            </div>
           </div>
 
           <div class="mb-3">
             <label class="form-label text-muted">
               <i class="bi bi-geo-alt me-2"></i>住所
             </label>
-            <input
-              type="text"
-              name="address"
-              class="form-control"
-              value="{{ profile.address }}"
-              placeholder="東京都渋谷区..."
-            >
+            <div class="p-2 bg-light rounded">
+              {{ profile.address|default:"未登録" }}
+            </div>
           </div>
-
-          <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary">
-              保存
-            </button>
-            <a href="{% url 'frontend:profile' %}" class="btn btn-outline-secondary">
-              キャンセル
-            </a>
-          </div>
-        </form>
-
-      {% else %}
-        <div class="mb-3">
-          <label class="form-label text-muted">
-            <i class="bi bi-person me-2"></i>表示名
-          </label>
-          <div class="p-2 bg-light rounded">
-            {{ profile.display_name|default:user_obj.username }}
-          </div>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label text-muted">
-            <i class="bi bi-envelope me-2"></i>メールアドレス
-          </label>
-          <div class="p-2 bg-light rounded">
-            {{ user_obj.email }}
-          </div>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label text-muted">
-            <i class="bi bi-telephone me-2"></i>電話番号
-          </label>
-          <div class="p-2 bg-light rounded">
-            {{ profile.phone|default:"未登録" }}
-          </div>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label text-muted">
-            <i class="bi bi-geo-alt me-2"></i>住所
-          </label>
-          <div class="p-2 bg-light rounded">
-            {{ profile.address|default:"未登録" }}
-          </div>
-        </div>
-      {% endif %}
+        {% endif %}
+      </div>
     </div>
-  </div>
+  {% endif %}
+
+  {# 私の投稿タブ #}
+  {% if active_tab == "posts" %}
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <h5 class="mb-3">私の投稿 ({{ my_products|length }})</h5>
+
+        {% if my_products %}
+          <div class="list-group">
+            {% for p in my_products %}
+              <a href="{% url 'frontend:product_detail' p.id %}"
+                 class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="fw-semibold">
+                    {{ p.title }}
+                  </div>
+                  <div class="text-muted small">
+                    ¥{{ p.price }} / 日
+                  </div>
+                </div>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-muted mb-2">投稿がありません。</p>
+          <a href="{% url 'frontend:product_new' %}" class="btn btn-sm btn-primary">
+            商品を投稿する
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+  {# お気に入りタブ #}
+  {% if active_tab == "favorites" %}
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <h5 class="mb-3">お気に入り ({{ favorite_products|length }})</h5>
+
+        {% if favorite_products %}
+          <div class="list-group">
+            {% for p in favorite_products %}
+              <a href="{% url 'frontend:product_detail' p.id %}"
+                 class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="fw-semibold">
+                    {{ p.title|default:p.name }}
+                  </div>
+                  <div class="text-muted small">
+                    ¥{{ p.price }} / 日
+                  </div>
+                </div>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center text-muted py-4">
+            <i class="bi bi-heart fs-1 d-block mb-2"></i>
+            <p class="mb-0">お気に入りがありません。</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+  {# レンタル中タブ（今は仮実装） #}
+  {% if active_tab == "rentals" %}
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <h5 class="mb-3">レンタル中</h5>
+
+        {% if renting_products %}
+          {# Rentalモデル実装したときにここ埋める #}
+        {% else %}
+          <div class="text-center text-muted py-4">
+            <i class="bi bi-box fs-1 d-block mb-2"></i>
+            <p class="mb-0">現在レンタル中の商品はありません。</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+  {# 取引履歴タブ（今は仮実装） #}
+  {% if active_tab == "history" %}
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <h5 class="mb-3">取引履歴</h5>
+
+        {% if transactions %}
+          {# ここも、レンタル/購入の履歴をtransactionsに詰めたら表示 #}
+        {% else %}
+          <div class="text-center text-muted py-4">
+            <i class="bi bi-clock-history fs-1 d-block mb-2"></i>
+            <p class="mb-0">まだ取引履歴がありません。</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
 
 </div>
 {% endblock %}
