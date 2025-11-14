@@ -3,25 +3,27 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from accounts.models import Profile
-from marketplace.models import Product, ProductImage
-
-
-from marketplace.models import Product
 from django.views.generic import ListView, DetailView, TemplateView
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
 
+from accounts.models import Profile
+from marketplace.models import Product, ProductImage
+
+
+# ========= 一覧・詳細など =========
 
 class ProductListView(ListView):
     model = Product
-    template_name = "frontend/products/index.html"  # 一覧テンプレ
+    template_name = "frontend/products/index.html"  # 商品一覧テンプレ
     context_object_name = "products"
     paginate_by = 20
 
     def get_queryset(self):
-        # 出品中だけ出したいならこう
-        return Product.objects.filter(status=Product.Status.LISTED).order_by("-created_at")
+        # 出品中だけ
+        return Product.objects.filter(
+            status=Product.Status.LISTED
+        ).order_by("-created_at")
 
 
 class ProductDetailView(DetailView):
@@ -31,6 +33,7 @@ class ProductDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        # ProductImage 側で related_name="images" を想定
         ctx["images"] = self.object.images.all()
         return ctx
 
@@ -59,6 +62,15 @@ class AdminShippingView(TemplateView):
     template_name = "frontend/admin/shipping.html"
 
 
+# ========= 商品投稿 =========
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from accounts.models import Profile
+from marketplace.models import Product, ProductImage
+# ...（上の import はそのままでOK）
+
 @login_required
 def product_create(request):
     user = request.user
@@ -70,6 +82,7 @@ def product_create(request):
         return redirect("frontend:profile")
 
     if request.method == "POST":
+        # --- フォーム値の取得 ---
         title = request.POST.get("title", "").strip()
         description = request.POST.get("description", "").strip()
         category = request.POST.get("category", "").strip()
@@ -90,6 +103,7 @@ def product_create(request):
 
         errors = []
 
+        # --- 必須チェック ---
         if not image_main:
             errors.append("メイン画像をアップロードしてください。")
         if not title:
@@ -101,7 +115,7 @@ def product_create(request):
         if not condition:
             errors.append("商品の状態を選択してください。")
 
-        # レンタル・販売の必須チェック（React版と同じロジック）
+        # --- レンタル/販売の必須チェック ---
         if availability_type != "販売のみ" and not daily_price:
             errors.append("レンタルのみ、または両方の場合はレンタル料金を入力してください。")
         if availability_type != "レンタルのみ" and not sale_price:
@@ -126,10 +140,10 @@ def product_create(request):
             }
             return render(request, "frontend/products/form.html", {"form_data": form_data})
 
-        # 数値変換
+        # --- 数値変換 ---
         try:
-            daily_price_val = float(daily_price) if daily_price else None
-            sale_price_val = float(sale_price) if sale_price else None
+            daily_price_val = int(daily_price) if daily_price else None
+            sale_price_val = int(sale_price) if sale_price else None
             min_rental_days_val = int(min_rental_days or 1)
             max_rental_days_val = int(max_rental_days or 30)
             stock_quantity_val = int(stock_quantity or 1)
@@ -150,28 +164,27 @@ def product_create(request):
             }
             return render(request, "frontend/products/form.html", {"form_data": form_data})
 
-        # Product作成（フィールド名は自分のモデルに合わせて調整）
+        # --- Product作成（モデルのフィールド名に合わせる）---
         product = Product(
             owner=user,
             title=title,
             description=description,
             category=category,
-            availability_type=availability_type,  # モデルにこのカラムがある前提
-            daily_price=daily_price_val,
-            sale_price=sale_price_val,
+            availability_type=availability_type,
+            # モデル側は price_per_day / price_buy
+            price_per_day=daily_price_val if availability_type != "販売のみ" else None,
+            price_buy=sale_price_val if availability_type != "レンタルのみ" else None,
             min_rental_days=min_rental_days_val,
             max_rental_days=max_rental_days_val,
             stock_quantity=stock_quantity_val,
             available_quantity=stock_quantity_val,
             condition=condition,
             owner_notes=owner_notes,
-            status="利用可能",
-            views=0,
-            average_rating=0,
-            review_count=0,
+            status=Product.Status.LISTED,
         )
         product.save()
 
+        # 画像の保存
         if image_main:
             ProductImage.objects.create(product=product, image=image_main)
         for img in [image_sub1, image_sub2, image_sub3]:
@@ -179,7 +192,9 @@ def product_create(request):
                 ProductImage.objects.create(product=product, image=img)
 
         messages.success(request, "商品を投稿しました。")
-        return redirect("frontend:products")
+
+        # ✅ 投稿完了画面として、投稿した商品の詳細ページへ遷移
+        return redirect("frontend:product_detail", pk=product.pk)
 
     # GET のとき：初期値を渡す
     form_data = {
@@ -189,6 +204,16 @@ def product_create(request):
         "stock_quantity": 1,
     }
     return render(request, "frontend/products/form.html", {"form_data": form_data})
+
+
+
+@login_required
+def product_create_done(request):
+    # 投稿完了画面用テンプレ：frontend/products/create_done.html
+    return render(request, "frontend/products/create_done.html")
+
+
+# ========= 会員登録 =========
 
 def signup(request):
     if request.method == "POST":

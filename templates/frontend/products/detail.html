@@ -1,34 +1,100 @@
 {% extends "base.html" %}
+
+{% block title %}商品詳細 - MURAシェア{% endblock %}
+
 {% block content %}
+
+{# 投稿完了などのメッセージ #}
+{% if messages %}
+  <div class="mb-3">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }} mb-2" role="alert">
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
 <a class="btn btn-sm btn-outline-secondary mb-3" href="{% url 'frontend:products' %}">← 一覧に戻る</a>
 
 <div class="row g-4">
   <div class="col-md-6">
-    <div class="ratio ratio-1x1 bg-light rounded">
+    <div class="ratio ratio-1x1 bg-light rounded d-flex align-items-center justify-content-center">
       {% if product.image_url %}
-        <img src="{{ product.image_url }}" class="object-fit-cover rounded" alt="">
+        <img src="{{ product.image_url }}" class="object-fit-cover rounded w-100 h-100" alt="{{ product.title }}">
+      {% elif images and images.0.image %}
+        <img src="{{ images.0.image.url }}" class="object-fit-cover rounded w-100 h-100" alt="{{ product.title }}">
+      {% else %}
+        <span class="text-muted">画像が登録されていません</span>
       {% endif %}
     </div>
+
     {% if images %}
-      <div class="d-flex gap-2 mt-2">
+      <div class="d-flex gap-2 mt-2 flex-wrap">
         {% for img in images %}
-          <img src="{{ img.image.url }}" class="rounded" style="width:64px;height:64px;object-fit:cover">
+          <div class="border rounded overflow-hidden" style="width:64px;height:64px;">
+            <img src="{{ img.image.url }}" class="w-100 h-100" style="object-fit:cover;" alt="">
+          </div>
         {% endfor %}
       </div>
     {% endif %}
   </div>
+
   <div class="col-md-6">
-    <h2 class="h4">{{ product.title }}</h2>
-    <div class="text-muted small mb-2">{{ product.category }} / {{ product.availability_type }}</div>
+    <h2 class="h4 mb-1">{{ product.title }}</h2>
+    <div class="text-muted small mb-2">
+      {{ product.category }} /
+      {{ product.availability_type }}
+    </div>
+
+    {# 料金表示 #}
+    <div class="mb-3">
+      {% if product.price_per_day %}
+        <div><strong>レンタル：</strong>{{ product.price_per_day }} 円 / 日</div>
+      {% endif %}
+      {% if product.price_buy %}
+        <div><strong>販売：</strong>{{ product.price_buy }} 円</div>
+      {% endif %}
+      {% if not product.price_per_day and not product.price_buy %}
+        <div class="text-muted">料金情報が未設定です</div>
+      {% endif %}
+    </div>
+
+    <div class="mb-2">
+      <span class="badge bg-light text-dark border">
+        状態：{{ product.condition }}
+      </span>
+      {% if product.stock_quantity %}
+        <span class="badge bg-light text-dark border">
+          在庫：{{ product.available_quantity|default:product.stock_quantity }} / {{ product.stock_quantity }}
+        </span>
+      {% endif %}
+    </div>
+
+    <hr>
+
+    <h6>商品説明</h6>
     <p>{{ product.description|linebreaksbr }}</p>
 
-    <div class="d-grid gap-2 mt-3">
-      <a class="btn btn-dark" href="{% url 'frontend:messages' %}">出品者にメッセージ</a>
-      <a class="btn btn-outline-dark" href="{% url 'frontend:purchases' %}">購入 / レンタル申請へ</a>
+    {% if product.owner_notes %}
+      <h6 class="mt-3">出品者からのひとこと</h6>
+      <p class="text-muted">{{ product.owner_notes|linebreaksbr }}</p>
+    {% endif %}
+
+    <div class="d-grid gap-2 mt-4">
+      <a class="btn btn-dark" href="{% url 'frontend:messages' %}">
+        出品者にメッセージ
+      </a>
+      <a class="btn btn-outline-dark" href="{% url 'frontend:purchases' %}">
+        購入 / レンタル申請へ
+      </a>
     </div>
   </div>
 </div>
 
 <hr class="my-4">
+
+{# レビュー表示（既存の部品を利用） #}
 {% include "frontend/products/_reviews.html" %}
+
 {% endblock %}
