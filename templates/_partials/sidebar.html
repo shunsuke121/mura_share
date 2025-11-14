@@ -13,52 +13,55 @@
 
   <div class="sidebar-divider mb-2"></div>
 
+   <!-- メニュー本体（画像の構成に合わせた版） -->
   <div class="sidebar-group mb-2">
-    <div class="sidebar-group-label">メイン</div>
+
+    <!-- ホーム -->
     <a
       href="{% url 'frontend:products' %}"
       class="sidebar-link {% if request.resolver_match.url_name == 'products' %}is-active{% endif %}"
     >
-      <span class="sidebar-icon bi bi-grid"></span>
-      <span class="sidebar-text">商品一覧</span>
+      <span class="sidebar-icon bi bi-house"></span>
+      <span class="sidebar-text">ホーム</span>
     </a>
 
+    <!-- 商品を投稿 -->
     <a
       href="{% url 'frontend:product_new' %}"
       class="sidebar-link {% if request.resolver_match.url_name == 'product_new' %}is-active{% endif %}"
     >
-      <span class="sidebar-icon bi bi-plus-square"></span>
+      <span class="sidebar-icon bi bi-plus-circle"></span>
       <span class="sidebar-text">商品を投稿</span>
     </a>
-  </div>
 
-  <div class="sidebar-group mb-2">
-    <div class="sidebar-group-label">取引</div>
-
-    <a
-      href="{% url 'frontend:purchases' %}"
-      class="sidebar-link {% if request.resolver_match.url_name == 'purchases' %}is-active{% endif %}"
-    >
-      <span class="sidebar-icon bi bi-bag-check"></span>
-      <span class="sidebar-text">購入履歴</span>
-    </a>
-
+    <!-- レンタル管理 -->
     <a
       href="{% url 'frontend:rentals' %}"
       class="sidebar-link {% if request.resolver_match.url_name == 'rentals' %}is-active{% endif %}"
     >
-      <span class="sidebar-icon bi bi-arrow-left-right"></span>
-      <span class="sidebar-text">レンタル中</span>
+      <span class="sidebar-icon bi bi-calendar-event"></span>
+      <span class="sidebar-text">レンタル管理</span>
     </a>
 
+    <!-- 購入管理 -->
+    <a
+      href="{% url 'frontend:purchases' %}"
+      class="sidebar-link {% if request.resolver_match.url_name == 'purchases' %}is-active{% endif %}"
+    >
+      <span class="sidebar-icon bi bi-bag"></span>
+      <span class="sidebar-text">購入管理</span>
+    </a>
+
+    <!-- 返品管理 -->
     <a
       href="{% url 'frontend:returns' %}"
       class="sidebar-link {% if request.resolver_match.url_name == 'returns' %}is-active{% endif %}"
     >
-      <span class="sidebar-icon bi bi-box-arrow-in-left"></span>
-      <span class="sidebar-text">返却・ステータス</span>
+      <span class="sidebar-icon bi bi-box"></span>
+      <span class="sidebar-text">返品管理</span>
     </a>
 
+    <!-- メッセージ -->
     <a
       href="{% url 'frontend:messages' %}"
       class="sidebar-link {% if request.resolver_match.url_name == 'messages' %}is-active{% endif %}"
@@ -66,35 +69,27 @@
       <span class="sidebar-icon bi bi-chat-dots"></span>
       <span class="sidebar-text">メッセージ</span>
     </a>
-  </div>
 
-  <div class="sidebar-group mb-2">
-    <div class="sidebar-group-label">アカウント</div>
-
-    <a
-      href="{% url 'frontend:profile' %}"
-      class="sidebar-link {% if request.resolver_match.url_name == 'profile' %}is-active{% endif %}"
-    >
-      <span class="sidebar-icon bi bi-person-circle"></span>
-      <span class="sidebar-text">プロフィール</span>
-    </a>
-
-    <a
-      href="{% url 'frontend:docs' %}"
-      class="sidebar-link {% if request.resolver_match.url_name == 'docs' %}is-active{% endif %}"
-    >
-      <span class="sidebar-icon bi bi-book"></span>
-      <span class="sidebar-text">使い方ガイド</span>
-    </a>
-
+    <!-- 配送管理 -->
     <a
       href="{% url 'frontend:admin_shipping' %}"
       class="sidebar-link {% if request.resolver_match.url_name == 'admin_shipping' %}is-active{% endif %}"
     >
-      <span class="sidebar-icon bi bi-box-seam"></span>
-      <span class="sidebar-text">発送管理</span>
+      <span class="sidebar-icon bi bi-truck"></span>
+      <span class="sidebar-text">配送管理</span>
     </a>
+
+    <!-- プロフィール -->
+    <a
+      href="{% url 'frontend:profile' %}"
+      class="sidebar-link {% if request.resolver_match.url_name == 'profile' %}is-active{% endif %}"
+    >
+      <span class="sidebar-icon bi bi-person"></span>
+      <span class="sidebar-text">プロフィール</span>
+    </a>
+
   </div>
+
 
   <div class="mt-auto pt-3 sidebar-footer small">
     {% if request.user.is_authenticated %}
