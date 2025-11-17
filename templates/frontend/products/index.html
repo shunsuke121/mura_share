@@ -1,34 +1,62 @@
 {% extends "base.html" %}
+{% block title %}商品一覧 - MURAシェア{% endblock %}
+
 {% block content %}
-<h2 class="h4 mb-3">商品一覧</h2>
+<h1 class="h4 mb-3">商品一覧</h1>
 
-<form class="mb-3" method="get">
-  {% include "frontend/products/_filters.html" %}
-</form>
+<div class="row g-3">
+  {% for p in products %}
+    <div class="col-6 col-md-4 col-lg-3">
+      <div class="card h-100 border-0 shadow-sm">
 
-{% if products %}
-  <div class="row g-3">
-    {% for p in products %}
-      <div class="col-6 col-md-4 col-lg-3">
-        {% include "frontend/products/_card.html" with p=p %}
+        {# 画像 #}
+        <a href="{% url 'frontend:product_detail' p.id %}">
+          <div class="ratio ratio-1x1 bg-light rounded-top overflow-hidden">
+            {% if p.image_url %}
+              <img src="{{ p.image_url }}" class="object-fit-cover w-100 h-100" alt="{{ p.title }}">
+            {% else %}
+              <div class="d-flex align-items-center justify-content-center text-muted fs-1">📦</div>
+            {% endif %}
+          </div>
+        </a>
+
+        <div class="card-body p-2">
+          {# 価格 (レンタル/販売のどちらか出す。両方あればレンタル優先で2行表示) #}
+          {% if p.price_per_day %}
+            <div class="small fw-semibold">¥{{ p.price_per_day|floatformat:0 }}/日</div>
+          {% endif %}
+          {% if p.price_buy %}
+            <div class="small text-muted">販売 ¥{{ p.price_buy|floatformat:0 }}</div>
+          {% endif %}
+
+          <div class="small fw-bold text-truncate">{{ p.title }}</div>
+
+          {% if p.category %}
+            <div class="text-muted small text-truncate">{{ p.category }}</div>
+          {% endif %}
+
+          {# 説明は2行で省略 #}
+          {% if p.description %}
+            <div class="text-muted small mt-1"
+                 style="-webkit-line-clamp:2;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;">
+              {{ p.description|striptags }}
+            </div>
+          {% endif %}
+
+          {# 在庫表示: available / total（数値が無ければスキップ） #}
+          {% if p.available_quantity or p.stock_quantity %}
+            <div class="text-muted small mt-1">
+              在庫:
+              {% if p.available_quantity %}{{ p.available_quantity }}{% else %}0{% endif %}
+              {% if p.stock_quantity %}/ {{ p.stock_quantity }}{% endif %}
+            </div>
+          {% endif %}
+        </div>
+
       </div>
-    {% endfor %}
-  </div>
-
-  {% if is_paginated %}
-    <nav class="mt-4">
-      <ul class="pagination pagination-sm">
-        {% if page_obj.has_previous %}
-          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">«</a></li>
-        {% endif %}
-        <li class="page-item disabled"><span class="page-link">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span></li>
-        {% if page_obj.has_next %}
-          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">»</a></li>
-        {% endif %}
-      </ul>
-    </nav>
-  {% endif %}
-{% else %}
-  <div class="text-muted">まだ商品がありません。</div>
-{% endif %}
+    </div>
+  {% empty %}
+    <p class="text-muted">まだ商品がありません。</p>
+  {% endfor %}
+</div>
 {% endblock %}

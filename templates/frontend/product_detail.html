@@ -1,19 +1,48 @@
 {% extends "base.html" %}
 {% block title %}{{ object.title }} - MURAシェア{% endblock %}
+
 {% block content %}
 <div class="row g-4">
+
   <div class="col-lg-6">
+    {% with first=object.image_url %}
+      {% if first %}
+        <img src="{{ first }}" class="img-fluid mb-3 rounded" alt="{{ object.title }}">
+      {% endif %}
+    {% endwith %}
+
     {% for img in object.images.all %}
-      <img src="{{ img.image.url }}" class="img-fluid mb-2" alt="image">
-    {% empty %}<div class="text-muted">画像なし</div>
+      <img src="{{ img.image.url }}" class="img-fluid mb-2 rounded" alt="image">
+    {% empty %}
+      {% if not object.image_url %}
+        <div class="text-muted">画像なし</div>
+      {% endif %}
     {% endfor %}
   </div>
+
   <div class="col-lg-6">
     <h2 class="h4">{{ object.title }}</h2>
-    <div class="mb-2">{{ object.description|linebreaksbr }}</div>
-    <div class="mb-3"><span class="badge bg-secondary">{{ object.category }}</span></div>
-    {% if object.price_per_day %}<div class="mb-3">レンタル: <strong>{{ object.price_per_day }} 円/日</strong></div>{% endif %}
-    {% if object.price_buy %}<div class="mb-3">販売: <strong>{{ object.price_buy }} 円</strong></div>{% endif %}
+
+    {% if object.category %}
+      <div class="mb-2"><span class="badge bg-secondary">{{ object.category }}</span></div>
+    {% endif %}
+
+    {% if object.price_per_day %}
+      <div class="mb-1">レンタル: <strong>¥{{ object.price_per_day|floatformat:0 }}/日</strong></div>
+    {% endif %}
+    {% if object.price_buy %}
+      <div class="mb-3">販売: <strong>¥{{ object.price_buy|floatformat:0 }}</strong></div>
+    {% endif %}
+
+    {% if object.available_quantity or object.stock_quantity %}
+      <div class="mb-3 text-muted">
+        在庫:
+        {% if object.available_quantity %}{{ object.available_quantity }}{% else %}0{% endif %}
+        {% if object.stock_quantity %}/ {{ object.stock_quantity }}{% endif %}
+      </div>
+    {% endif %}
+
+    <div class="mb-3">{{ object.description|linebreaksbr }}</div>
 
     {% if user.is_authenticated and user != object.owner %}
       <hr>
@@ -30,5 +59,6 @@
       <a href="{% url 'frontend:login' %}" class="btn btn-outline-primary">ログインしてレンタル申請</a>
     {% endif %}
   </div>
+
 </div>
 {% endblock %}
