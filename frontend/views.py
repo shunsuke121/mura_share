@@ -1,14 +1,12 @@
-# frontend/views.py
-
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.views.generic import ListView, DetailView, TemplateView
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
 
 from accounts.models import Profile
-from marketplace.models import Product, ProductImage
+from marketplace.models import Product, ProductImage, RentalApplication  # ★ 申請モデルも使う
 
 
 # ========= 一覧・詳細など =========
@@ -33,8 +31,23 @@ class ProductDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        # ProductImage 側で related_name="images" を想定
-        ctx["images"] = self.object.images.all()
+        p = self.object
+        # 画像
+        ctx["images"] = p.images.all() if hasattr(p, "images") else ProductImage.objects.none()
+
+        # ▼ オーナー判定
+        user = self.request.user
+        is_owner = user.is_authenticated and getattr(p, "owner_id", None) == user.id
+        ctx["is_owner"] = is_owner
+
+        # ▼ 提供方法（あなたのモデルは availability_type を日本語で保持）
+        #   値: 「レンタル・販売両方」「レンタルのみ」「販売のみ」
+        t = getattr(p, "availability_type", "レンタル・販売両方")
+        allow_rental = t in ("レンタル・販売両方", "レンタルのみ")
+        allow_purchase = t in ("レンタル・販売両方", "販売のみ")
+        ctx["allow_rental"] = allow_rental
+        ctx["allow_purchase"] = allow_purchase
+
         return ctx
 
 
@@ -63,13 +76,6 @@ class AdminShippingView(TemplateView):
 
 
 # ========= 商品投稿 =========
-
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from accounts.models import Profile
-from marketplace.models import Product, ProductImage
-# ...（上の import はそのままでOK）
 
 @login_required
 def product_create(request):
@@ -164,7 +170,7 @@ def product_create(request):
             }
             return render(request, "frontend/products/form.html", {"form_data": form_data})
 
-        # --- Product作成（モデルのフィールド名に合わせる）---
+        # --- Product作成（あなたのモデルのフィールド名に準拠）---
         product = Product(
             owner=user,
             title=title,
@@ -193,10 +199,10 @@ def product_create(request):
 
         messages.success(request, "商品を投稿しました。")
 
-        # ✅ 投稿完了画面として、投稿した商品の詳細ページへ遷移
+        # 投稿完了＝詳細へ
         return redirect("frontend:product_detail", pk=product.pk)
 
-    # GET のとき：初期値を渡す
+    # GET のとき：初期値
     form_data = {
         "availability_type": "レンタル・販売両方",
         "min_rental_days": 1,
@@ -206,11 +212,98 @@ def product_create(request):
     return render(request, "frontend/products/form.html", {"form_data": form_data})
 
 
-
 @login_required
 def product_create_done(request):
-    # 投稿完了画面用テンプレ：frontend/products/create_done.html
+    # （未使用でもOK）
     return render(request, "frontend/products/create_done.html")
+
+
+# ========= レンタル/購入 申請 & 管理 =========
+
+@login_required
+def rental_apply(request, pk):
+    """右側フォームからの申請作成"""
+    product = get_object_or_404(Product, pk=pk)
+
+    # 自分の出品には申請不可
+    if getattr(product, "owner_id", None) == request.user.id:
+        messages.error(request, "自分が出品した商品には申請できません。")
+        return redirect("frontend:product_detail", pk=pk)
+
+    order_type = request.POST.get("order_type")           # 'rental' or 'purchase'
+    quantity = int(request.POST.get("quantity") or 1)
+
+    postal_code = request.POST.get("postal_code", "")
+    address = request.POST.get("address", "")
+    payment_method = request.POST.get("payment_method")
+    message_txt = request.POST.get("message", "")
+
+    start_date = request.POST.get("start_date") or None
+    end_date   = request.POST.get("end_date") or None
+
+    # 提供方法チェック
+    t = getattr(product, "availability_type", "レンタル・販売両方")
+    allow_rental = t in ("レンタル・販売両方", "レンタルのみ")
+    allow_purchase = t in ("レンタル・販売両方", "販売のみ")
+    if order_type == "rental" and not allow_rental:
+        messages.error(request, "この商品はレンタルできません。")
+        return redirect("frontend:product_detail", pk=pk)
+    if order_type == "purchase" and not allow_purchase:
+        messages.error(request, "この商品は購入できません。")
+        return redirect("frontend:product_detail", pk=pk)
+
+    # バリデーション
+    errors = []
+    if quantity < 1:
+        errors.append("個数は1以上にしてください。")
+    if not payment_method:
+        errors.append("決済方法を選択してください。")
+
+    from django.utils.dateparse import parse_date
+    sd = ed = None
+    if order_type == "rental":
+        sd = parse_date(start_date) if start_date else None
+        ed = parse_date(end_date) if end_date else None
+        if not sd or not ed:
+            errors.append("レンタル開始日・終了日を入力してください。")
+        elif sd > ed:
+            errors.append("レンタル終了日は開始日以降を選択してください。")
+
+    if errors:
+        for e in errors: messages.error(request, e)
+        return redirect("frontend:product_detail", pk=pk)
+
+    # 申請レコード作成
+    RentalApplication.objects.create(
+        product=product,
+        owner=product.owner,          # 受け取り側
+        renter=request.user,          # 申請者
+        order_type=order_type,
+        quantity=quantity,
+        start_date=sd,
+        end_date=ed,
+        postal_code=postal_code,
+        address=address,
+        payment_method=payment_method,
+        message=message_txt,
+    )
+
+    messages.success(request, "申請を送信しました。オーナーの承認をお待ちください。")
+    return redirect("frontend:product_detail", pk=pk)
+
+
+@login_required
+def rental_manage(request):
+    """オーナーが受け取った申請一覧（簡易）"""
+    apps = RentalApplication.objects.filter(owner=request.user).order_by("-created_at")
+    return render(request, "frontend/rentals/manage.html", {"applications": apps})
+
+
+@login_required
+def my_products(request):
+    """オーナーの投稿商品一覧"""
+    items = Product.objects.filter(owner=request.user).order_by("-created_at")
+    return render(request, "frontend/products/my_products.html", {"products": items})
 
 
 # ========= 会員登録 =========

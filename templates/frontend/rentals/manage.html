@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">レンタル管理（受け取った申請）</h1>
+{% for a in applications %}
+  <div class="border rounded p-3 mb-3">
+    <div class="text-sm text-gray-600">{{ a.created_at|date:"Y-m-d H:i" }} / 状態: {{ a.get_status_display }}</div>
+    <div class="font-semibold">{{ a.product.title }}（{{ a.get_order_type_display }}） × {{ a.quantity }}</div>
+    {% if a.order_type == 'rental' %}
+      <div>期間: {{ a.start_date }} 〜 {{ a.end_date }}</div>
+    {% endif %}
+    <div>申請者: {{ a.renter.username }}</div>
+    <div>配送先: {{ a.postal_code }} {{ a.address }}</div>
+    <div>決済: {{ a.get_payment_method_display }}</div>
+    {% if a.message %}<div class="mt-2 text-sm bg-gray-50 p-2 rounded">メッセージ: {{ a.message }}</div>{% endif %}
+  </div>
+{% empty %}
+  <p>まだ申請はありません。</p>
+{% endfor %}
+{% endblock %}

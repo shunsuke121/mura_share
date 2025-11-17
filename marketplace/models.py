@@ -108,3 +108,58 @@ class Review(models.Model):
     rating  = models.PositiveSmallIntegerField()
     comment = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+# --- RentalApplication（申請）モデル ここから追記 -------------------------
+from django.conf import settings
+from django.db import models
+
+class RentalApplication(models.Model):
+    class OrderType(models.TextChoices):
+        RENTAL = 'rental', 'レンタル'
+        PURCHASE = 'purchase', '購入'
+
+    class Status(models.TextChoices):
+        PENDING   = 'pending',   '申請中'
+        APPROVED  = 'approved',  '承認'
+        REJECTED  = 'rejected',  '却下'
+        CANCELLED = 'cancelled', 'キャンセル'
+
+    product = models.ForeignKey('marketplace.Product',
+                                on_delete=models.CASCADE,
+                                related_name='applications')
+    owner   = models.ForeignKey(settings.AUTH_USER_MODEL,
+                                on_delete=models.CASCADE,
+                                related_name='received_applications')
+    renter  = models.ForeignKey(settings.AUTH_USER_MODEL,
+                                on_delete=models.CASCADE,
+                                related_name='sent_applications')
+
+    order_type = models.CharField(max_length=10, choices=OrderType.choices)
+    quantity   = models.PositiveIntegerField(default=1)
+
+    # レンタル時のみ使用
+    start_date = models.DateField(blank=True, null=True)
+    end_date   = models.DateField(blank=True, null=True)
+
+    postal_code = models.CharField(max_length=20, blank=True)
+    address     = models.CharField(max_length=255, blank=True)
+
+    PAYMENT_CHOICES = [
+        ('card',        'クレジットカード'),
+        ('convenience', 'コンビニ'),
+        ('paypay',      'PayPay'),
+        ('bank',        '銀行振込'),
+    ]
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_CHOICES)
+    message        = models.TextField(blank=True)
+
+    status     = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.get_order_type_display()}申請: product={self.product_id}, by={self.renter_id}'
+# --- 追記ここまで ----------------------------------------------------------
+

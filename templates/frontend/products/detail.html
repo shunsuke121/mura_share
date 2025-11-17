@@ -18,6 +18,7 @@
 <a class="btn btn-sm btn-outline-secondary mb-3" href="{% url 'frontend:products' %}">← 一覧に戻る</a>
 
 <div class="row g-4">
+  {# ===== 左：画像エリア ===== #}
   <div class="col-md-6">
     <div class="ratio ratio-1x1 bg-light rounded d-flex align-items-center justify-content-center">
       {% if product.image_url %}
@@ -40,6 +41,7 @@
     {% endif %}
   </div>
 
+  {# ===== 右：詳細＋申請フォーム（出し分け） ===== #}
   <div class="col-md-6">
     <h2 class="h4 mb-1">{{ product.title }}</h2>
     <div class="text-muted small mb-2">
@@ -50,10 +52,10 @@
     {# 料金表示 #}
     <div class="mb-3">
       {% if product.price_per_day %}
-        <div><strong>レンタル：</strong>{{ product.price_per_day }} 円 / 日</div>
+        <div><strong>レンタル：</strong>{{ product.price_per_day|floatformat:0 }} 円 / 日</div>
       {% endif %}
       {% if product.price_buy %}
-        <div><strong>販売：</strong>{{ product.price_buy }} 円</div>
+        <div><strong>販売：</strong>{{ product.price_buy|floatformat:0 }} 円</div>
       {% endif %}
       {% if not product.price_per_day and not product.price_buy %}
         <div class="text-muted">料金情報が未設定です</div>
@@ -61,9 +63,7 @@
     </div>
 
     <div class="mb-2">
-      <span class="badge bg-light text-dark border">
-        状態：{{ product.condition }}
-      </span>
+      <span class="badge bg-light text-dark border">状態：{{ product.condition }}</span>
       {% if product.stock_quantity %}
         <span class="badge bg-light text-dark border">
           在庫：{{ product.available_quantity|default:product.stock_quantity }} / {{ product.stock_quantity }}
@@ -81,14 +81,99 @@
       <p class="text-muted">{{ product.owner_notes|linebreaksbr }}</p>
     {% endif %}
 
-    <div class="d-grid gap-2 mt-4">
-      <a class="btn btn-dark" href="{% url 'frontend:messages' %}">
-        出品者にメッセージ
-      </a>
-      <a class="btn btn-outline-dark" href="{% url 'frontend:purchases' %}">
-        購入 / レンタル申請へ
-      </a>
+    {# ================= ここから右側の“申請ボックス” ================= #}
+    <div class="card shadow-sm mt-4">
+      <div class="card-body">
+        {% if user.is_authenticated and product.owner.id == user.id %}
+          {# --- オーナー表示 --- #}
+          <div class="small text-muted mb-2">あなたの商品</div>
+          <div class="alert alert-primary py-2 small">
+            これはあなたが投稿した商品です。自分の商品のレンタル・購入はできません。
+          </div>
+          <div class="d-grid gap-2">
+            <a href="{% url 'frontend:my_products' %}" class="btn btn-dark">マイページで管理</a>
+            <a href="{% url 'frontend:rental_manage' %}" class="btn btn-outline-primary">レンタル管理を見る</a>
+          </div>
+        {% else %}
+          {# --- 申請フォーム（レンタル/購入の切替） --- #}
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="m-0">レンタル or 購入</h6>
+            <span class="badge bg-light text-dark">
+              {% if product.availability_type == 'レンタル・販売両方' %}レンタル・販売両方
+              {% elif product.availability_type == 'レンタルのみ' %}レンタルのみ
+              {% else %}販売のみ{% endif %}
+            </span>
+          </div>
+
+          {# タブ #}
+          <div class="btn-group w-100 mb-3" role="group" aria-label="order-type">
+            {% if product.availability_type != '販売のみ' %}
+              <button type="button" class="btn btn-outline-secondary order-tab active" data-mode="rental">レンタル</button>
+            {% endif %}
+            {% if product.availability_type != 'レンタルのみ' %}
+              <button type="button" class="btn btn-outline-secondary order-tab {% if product.availability_type == '販売のみ' %}active{% endif %}" data-mode="purchase">購入</button>
+            {% endif %}
+          </div>
+
+          <form method="post" action="{% url 'frontend:rental_apply' product.pk %}">
+            {% csrf_token %}
+            <input type="hidden" id="order_type" name="order_type"
+                   value="{% if product.availability_type == '販売のみ' %}purchase{% else %}rental{% endif %}">
+
+            <div class="mb-3">
+              <label class="form-label">個数 *</label>
+              <input type="number" name="quantity" class="form-control" value="1" min="1" required>
+            </div>
+
+            {# レンタル専用フィールド #}
+            <div id="rental_fields" style="display:{% if product.availability_type == '販売のみ' %}none{% else %}block{% endif %};">
+              <div class="mb-3">
+                <label class="form-label">レンタル開始日 *</label>
+                <input type="date" name="start_date" class="form-control">
+                <div class="form-text">配送時間を考慮して開始日を選んでください。</div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">レンタル終了日 *</label>
+                <input type="date" name="end_date" class="form-control">
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">配送先住所 *</label>
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <input type="text" name="postal_code" class="form-control" placeholder="郵便番号（ハイフンなし）">
+                </div>
+              </div>
+              <textarea name="address" rows="2" class="form-control" placeholder="住所"></textarea>
+              <div class="form-text">この住所は出品者には開示されません。</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">決済方法 *</label>
+              <select name="payment_method" class="form-select" required>
+                <option value="">決済方法を選択</option>
+                <option value="card">クレジットカード</option>
+                <option value="convenience">コンビニ</option>
+                <option value="paypay">PayPay</option>
+                <option value="bank">銀行振込</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">メッセージ（任意）</label>
+              <textarea name="message" rows="3" class="form-control" placeholder="オーナーへのメッセージ…"></textarea>
+            </div>
+
+            <button type="submit" id="submit_btn" class="btn btn-dark w-100">
+              {% if product.availability_type == '販売のみ' %}購入を申請する{% else %}レンタルを申請する{% endif %}
+            </button>
+          </form>
+        {% endif %}
+      </div>
     </div>
+    {# ================= 申請ボックスここまで ================= #}
+
   </div>
 </div>
 
@@ -96,5 +181,35 @@
 
 {# レビュー表示（既存の部品を利用） #}
 {% include "frontend/products/_reviews.html" %}
+
+{# タブ切替のJS（Bootstrap不要・素朴な切替） #}
+<script>
+(function(){
+  const tabs = document.querySelectorAll('.order-tab');
+  const rentalFields = document.getElementById('rental_fields');
+  const orderType = document.getElementById('order_type');
+  const submitBtn = document.getElementById('submit_btn');
+  if(!tabs.length) return;
+
+  function setMode(mode){
+    orderType.value = mode;
+    if(mode === 'rental'){
+      if(rentalFields) rentalFields.style.display = 'block';
+      if(submitBtn) submitBtn.textContent = 'レンタルを申請する';
+    }else{
+      if(rentalFields) rentalFields.style.display = 'none';
+      if(submitBtn) submitBtn.textContent = '購入を申請する';
+    }
+    tabs.forEach(btn => btn.classList.remove('active'));
+    const active = Array.from(tabs).find(b => b.dataset.mode === mode);
+    if(active) active.classList.add('active');
+  }
+
+  tabs.forEach(btn => btn.addEventListener('click', () => setMode(btn.dataset.mode)));
+
+  // 初期：hiddenの値に合わせる
+  setMode(orderType ? orderType.value : 'rental');
+})();
+</script>
 
 {% endblock %}

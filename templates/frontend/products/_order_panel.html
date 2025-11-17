@@ -1,0 +1,104 @@
+<div class="card p-4 rounded shadow" style="position:sticky; top:16px;">
+  {% if is_owner %}
+    <div class="text-sm text-slate-600 mb-2">あなたの商品</div>
+    <div class="text-xs bg-blue-50 text-blue-700 px-3 py-2 rounded mb-4">
+      これはあなたが投稿した商品です。自分の商品のレンタル・購入はできません。
+    </div>
+    <a href="{% url 'frontend:my_products' %}" class="btn w-full"
+       style="display:block;text-align:center;background:#0f172a;color:#fff;padding:.75rem;border-radius:.5rem;">マイページで管理</a>
+    <a href="{% url 'frontend:rental_manage' %}" class="btn w-full mt-2"
+       style="display:block;text-align:center;background:#eef2ff;color:#3730a3;padding:.6rem;border-radius:.5rem;">レンタル管理を見る</a>
+
+  {% else %}
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-bold">レンタル or 購入</h3>
+      <span class="text-xs bg-gray-100 px-2 py-1 rounded">
+        {% if allow_rental and allow_purchase %}レンタル・販売両方{% elif allow_rental %}レンタルのみ{% elif allow_purchase %}販売のみ{% endif %}
+      </span>
+    </div>
+
+    <div class="flex gap-2 mb-3">
+      {% if allow_rental %}
+        <button type="button" data-mode="rental" class="order-tab active"
+                style="flex:1;padding:.5rem;border-radius:.5rem;border:1px solid #e5e7eb;">レンタル</button>
+      {% endif %}
+      {% if allow_purchase %}
+        <button type="button" data-mode="purchase" class="order-tab {% if not allow_rental %}active{% endif %}"
+                style="flex:1;padding:.5rem;border-radius:.5rem;border:1px solid #e5e7eb;">購入</button>
+      {% endif %}
+    </div>
+
+    <form method="post" action="{% url 'frontend:rental_apply' product.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="order_type" id="order_type" value="{% if allow_rental %}rental{% else %}purchase{% endif %}">
+
+      <label class="block text-sm mb-1">個数 *</label>
+      <input type="number" name="quantity" value="1" min="1" class="w-full mb-3"
+             style="border:1px solid #e5e7eb;padding:.5rem;border-radius:.5rem;">
+
+      <div id="rental_fields" style="display:{% if allow_rental %}block{% else %}none{% endif %};">
+        <label class="block text-sm mb-1">レンタル開始日 *</label>
+        <input type="date" name="start_date" class="w-full mb-3"
+               style="border:1px solid #e5e7eb;padding:.5rem;border-radius:.5rem;">
+        <label class="block text-sm mb-1">レンタル終了日 *</label>
+        <input type="date" name="end_date" class="w-full mb-3"
+               style="border:1px solid #e5e7eb;padding:.5rem;border-radius:.5rem;">
+      </div>
+
+      <label class="block text-sm mb-1">配送先住所 *</label>
+      <input type="text" name="postal_code" placeholder="郵便番号（ハイフンなし）" class="w-full mb-2"
+             style="border:1px solid #e5e7eb;padding:.5rem;border-radius:.5rem;">
+      <textarea name="address" rows="2" placeholder="住所" class="w-full mb-3"
+                style="border:1px solid #e5e7eb;padding:.5rem;border-radius:.5rem;"></textarea>
+
+      <label class="block text-sm mb-1">決済方法 *</label>
+      <select name="payment_method" class="w-full mb-3"
+              style="border:1px solid #e5e7eb;padding:.5rem;border-radius:.5rem;">
+        <option value="">決済方法を選択</option>
+        <option value="card">クレジットカード</option>
+        <option value="convenience">コンビニ</option>
+        <option value="paypay">PayPay</option>
+        <option value="bank">銀行振込</option>
+      </select>
+
+      <label class="block text-sm mb-1">メッセージ（任意）</label>
+      <textarea name="message" rows="3" placeholder="オーナーへのメッセージ..." class="w-full mb-4"
+                style="border:1px solid #e5e7eb;padding:.5rem;border-radius:.5rem;"></textarea>
+
+      <button type="submit" id="submit_btn" class="w-full"
+              style="display:block;text-align:center;background:#0f172a;color:#fff;padding:.8rem;border-radius:.5rem;">
+        レンタルを申請する
+      </button>
+    </form>
+  {% endif %}
+</div>
+
+<script>
+(function(){
+  const allowRental = {{ allow_rental|yesno:"true,false" }};
+  const allowPurchase = {{ allow_purchase|yesno:"true,false" }};
+  const tabs = document.querySelectorAll('.order-tab');
+  const rentalFields = document.getElementById('rental_fields');
+  const orderType = document.getElementById('order_type');
+  const submitBtn = document.getElementById('submit_btn');
+
+  function setMode(mode){
+    orderType.value = mode;
+    if(mode==='rental'){
+      rentalFields && (rentalFields.style.display = 'block');
+      submitBtn && (submitBtn.textContent = 'レンタルを申請する');
+    }else{
+      rentalFields && (rentalFields.style.display = 'none');
+      submitBtn && (submitBtn.textContent = '購入を申請する');
+    }
+    tabs.forEach(t=>t.classList.remove('active'));
+    const active = document.querySelector('.order-tab[data-mode="'+mode+'"]');
+    active && active.classList.add('active');
+  }
+
+  tabs.forEach(t => t.addEventListener('click', ()=> setMode(t.getAttribute('data-mode')) ));
+
+  if (allowRental) setMode('rental');
+  else if (allowPurchase) setMode('purchase');
+})();
+</script>
