@@ -1,0 +1,68 @@
+{# 共通リスト。mode: 'mine' or 'received' #}
+{% if items %}
+  <div class="vstack gap-3">
+    {% for r in items %}
+      <div class="card border-0 shadow-sm">
+        <div class="card-body d-flex gap-3 align-items-center">
+          {% if r.product.image_url %}
+            <img src="{{ r.product.image_url }}" alt="" class="rounded" style="width:72px;height:72px;object-fit:cover;">
+          {% else %}
+            <div class="bg-light rounded d-flex align-items-center justify-content-center" style="width:72px;height:72px;">📦</div>
+          {% endif %}
+
+          <div class="flex-grow-1">
+            <div class="fw-semibold text-truncate">
+              <a class="link-dark text-decoration-none" href="{% url 'frontend:product_detail' r.product_id %}">
+                {{ r.product.title }}
+              </a>
+            </div>
+            <div class="text-muted small">
+              期間: {{ r.start_date|date:"Y/m/d" }} 〜 {{ r.end_date|date:"Y/m/d" }}
+              {% if r.total_price %}・合計: ¥{{ r.total_price|floatformat:0 }}{% endif %}
+            </div>
+            <div class="mt-1 d-flex gap-2 align-items-center">
+              <span class="badge rounded-pill
+                {% if r.status == r.Status.REQUESTED %} text-bg-secondary
+                {% elif r.status == r.Status.APPROVED %} text-bg-primary
+                {% elif r.status == r.Status.REJECTED %} text-bg-danger
+                {% elif r.status == r.Status.SHIPPED %} text-bg-info
+                {% elif r.status == r.Status.RECEIVED %} text-bg-warning
+                {% elif r.status == r.Status.RETURNED %} text-bg-warning
+                {% elif r.status == r.Status.COMPLETED %} text-bg-success
+                {% else %} text-bg-secondary{% endif %}">
+                {{ r.get_status_display }}
+              </span>
+
+              {% if mode == 'received' %}
+                <span class="text-muted small">申請者: {{ r.renter.username }}</span>
+              {% else %}
+                <span class="text-muted small">出品者: {{ r.product.owner.username }}</span>
+              {% endif %}
+            </div>
+          </div>
+
+          {% if mode == 'received' and r.status == r.Status.REQUESTED %}
+            <div class="d-flex gap-2">
+              <form method="post" action="{% url 'frontend:rental_approve' r.id %}">{% csrf_token %}
+                <button class="btn btn-sm btn-dark rounded-pill">承認</button>
+              </form>
+              <form method="post" action="{% url 'frontend:rental_reject' r.id %}">{% csrf_token %}
+                <button class="btn btn-sm btn-outline-dark rounded-pill">却下</button>
+              </form>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="text-center py-5">
+    <div class="display-6 mb-2">📦</div>
+    <div class="fw-semibold mb-1">
+      {% if mode == 'received' %}受け取った申請がありません{% else %}レンタル申請がありません{% endif %}
+    </div>
+    <div class="text-muted small">
+      {% if mode == 'received' %}商品を投稿して申請を受け取りましょう！{% else %}商品をレンタルして始めましょう！{% endif %}
+    </div>
+  </div>
+{% endif %}

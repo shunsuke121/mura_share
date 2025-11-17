@@ -1,0 +1,66 @@
+
+
+<div class="d-flex flex-column gap-3">
+  {% for o in items %}
+    <div class="card purchase-card border-0 shadow-sm">
+      <div class="card-body d-flex gap-3 align-items-start">
+        <a href="{% url 'frontend:product_detail' o.product.id %}" class="thumb">
+          {% if o.product.image_url %}
+            <img src="{{ o.product.image_url }}" alt="">
+          {% else %}
+            <div class="noimg">No Image</div>
+          {% endif %}
+        </a>
+
+        <div class="flex-grow-1">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="pe-3">
+              <h5 class="mb-1">
+                <a class="text-decoration-none link-dark"
+                   href="{% url 'frontend:product_detail' o.product.id %}">{{ o.product.title }}</a>
+              </h5>
+
+              <div class="text-muted small mb-2">
+                {{ o.product.description|default:"説明なし"|truncatechars:90 }}
+              </div>
+
+              <div class="purchase-meta small">
+                <span class="badge bg-light text-dark border">{{ o.product.category }}</span>
+                {% if o.product.stock_quantity is not None %}
+                  <span class="text-muted">在庫: {{ o.product.stock_quantity }}</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="text-end">
+              <div class="fw-bold">¥{{ o.price|floatformat:0 }}</div>
+              <div class="text-muted small">{{ o.created_at|date:"Y/m/d H:i" }}</div>
+              <div class="mt-1">
+                {% with st=o.status %}
+                  {% if st == 'paid' or st == 'paid_flag' %}
+                    <span class="badge bg-primary">支払い完了</span>
+                  {% elif st == 'shipped' %}
+                    <span class="badge bg-info text-dark">発送済み</span>
+                  {% elif st == 'completed' %}
+                    <span class="badge bg-success">完了</span>
+                  {% elif st == 'canceled' %}
+                    <span class="badge bg-secondary">キャンセル</span>
+                  {% else %}
+                    <span class="badge bg-warning text-dark">{{ st }}</span>
+                  {% endif %}
+                {% endwith %}
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 d-flex gap-2 justify-content-end">
+            <a href="{% url 'frontend:product_detail' o.product.id %}" class="btn btn-sm btn-outline-secondary">詳細</a>
+            {% if o.status == 'paid' or o.status == 'paid_flag' %}
+              <button class="btn btn-sm btn-outline-danger" disabled>キャンセル申請</button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>

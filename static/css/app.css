@@ -326,3 +326,38 @@ textarea.form-control {
     margin: 0 auto;
   }
 }
+
+/* ===== Purchases page (色は既存CSS変数で統一) ===== */
+.purchases .segmented{
+  background: hsl(var(--muted));
+  border-radius: 999px;
+  padding: 4px;
+  display: flex;
+  gap: 6px;
+}
+.purchases .seg-btn{
+  flex: 1;
+  text-align: center;
+  padding: .55rem 1rem;
+  border-radius: 999px;
+  text-decoration: none;
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+.purchases .seg-btn:hover{ opacity:.9; }
+.purchases .seg-btn.active{
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  box-shadow: 0 6px 18px rgba(15,23,42,.18);
+}
+
+.purch-card .thumb{
+  width:96px; height:96px; border-radius:.75rem; object-fit:cover;
+  background: hsl(var(--muted));
+}
+.purch-card .noimg{
+  width:96px; height:96px; border-radius:.75rem;
+  background: hsl(var(--muted)); color: hsl(var(--muted-foreground));
+  display:flex; align-items:center; justify-content:center; font-size:12px;
+}
+.purchases .empty-state{ color: hsl(var(--muted-foreground)); }

@@ -1,0 +1,36 @@
+{# templates/frontend/purchases/_list.html #}
+{# 期待: items = Purchase のリスト, mode = 'mine' or 'received' #}
+
+{% for o in items %}
+  <div class="card purch-card border-0 shadow-sm mb-3">
+    <div class="card-body d-flex align-items-center gap-3">
+
+      {% if o.product.image_url %}
+        <img class="thumb" src="{{ o.product.image_url }}" alt="">
+      {% else %}
+        <div class="noimg">No Image</div>
+      {% endif %}
+
+      <div class="flex-grow-1">
+        <div class="fw-semibold text-truncate">{{ o.product.title }}</div>
+        <div class="text-muted small">
+          注文日: {{ o.created_at|date:"Y/m/d H:i" }}
+          ・ 金額: ￥{{ o.price|default:o.product.price_buy|default:"-" }}
+        </div>
+        <div class="text-muted small">ステータス: {{ o.status }}</div>
+      </div>
+
+      <div class="text-end">
+        <a class="btn btn-sm btn-outline-secondary"
+           href="{% url 'frontend:product_detail' o.product_id %}">
+          商品を見る
+        </a>
+      </div>
+
+    </div>
+  </div>
+{% empty %}
+  <div class="empty-state text-center py-5">
+    <div class="text-muted">データがありません。</div>
+  </div>
+{% endfor %}
