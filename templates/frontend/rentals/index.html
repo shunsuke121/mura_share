@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}レンタル管理{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 px-4">
+  <div class="max-w-6xl mx-auto">
+    <div class="mb-8 text-center">
+      <h1 class="text-4xl font-bold text-gray-900 mb-2 tracking-tight">レンタル管理</h1>
+      <p class="text-gray-600 text-lg">あなたのレンタル申請と受け取った申請を管理</p>
+    </div>
+
+    {# フラッシュメッセージ #}
+    {% if messages %}
+      <div class="mb-4 space-y-2">
+        {% for message in messages %}
+          <div class="px-4 py-2 rounded-lg text-sm
+              {% if message.tags == 'success' %}
+                bg-green-50 text-green-800
+              {% elif message.tags == 'error' %}
+                bg-red-50 text-red-800
+              {% else %}
+                bg-gray-50 text-gray-800
+              {% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="grid md:grid-cols-2 gap-8">
+      {# 私の申請 #}
+      <section>
+        <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+          <span>私の申請</span>
+          <span class="text-sm text-gray-500">({{ my_active_rentals|length }})</span>
+        </h2>
+        <div class="grid gap-6">
+          {% if my_active_rentals %}
+            {% for rental in my_active_rentals %}
+              {% include "frontend/rentals/_rental_card.html" with rental=rental is_my_rental=True %}
+            {% endfor %}
+          {% else %}
+            <div class="text-center py-20">
+              <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              </div>
+              <h3 class="text-xl font-semibold text-gray-700 mb-2">レンタル申請がありません</h3>
+              <p class="text-gray-500">商品をレンタルして始めましょう。</p>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+
+      {# 受け取った申請 #}
+      <section>
+        <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+          <span>受け取った申請</span>
+          <span class="text-sm text-gray-500">({{ received_active_rentals|length }})</span>
+        </h2>
+        <div class="grid gap-6">
+          {% if received_active_rentals %}
+            {% for rental in received_active_rentals %}
+              {% include "frontend/rentals/_rental_card.html" with rental=rental is_my_rental=False %}
+            {% endfor %}
+          {% else %}
+            <div class="text-center py-20">
+              <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              </div>
+              <h3 class="text-xl font-semibold text-gray-700 mb-2">受け取った申請がありません</h3>
+              <p class="text-gray-500">商品を投稿してレンタル申請を受け取ろう。</p>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}

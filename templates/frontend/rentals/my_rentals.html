@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}レンタル管理 - 私の申請{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 px-4">
+  <div class="max-w-6xl mx-auto">
+    <div class="mb-8 text-center">
+      <h1 class="text-4xl font-bold text-gray-900 mb-2 tracking-tight">私の申請</h1>
+      <p class="text-gray-600 text-lg">あなたがレンタルを申し込んだ履歴を管理できます。</p>
+    </div>
+    <div class="flex gap-2 justify-center mb-6">
+  <a href="{% url 'frontend:my_rentals' %}"
+     class="px-4 py-2 rounded-lg border
+            {% if request.resolver_match.url_name == 'my_rentals' %}
+              bg-gray-900 text-white border-gray-900
+            {% else %}
+              bg-white text-gray-700 hover:bg-gray-50 border-gray-300
+            {% endif %}">
+    私の申請
+  </a>
+  <a href="{% url 'frontend:received_rentals' %}"
+     class="px-4 py-2 rounded-lg border
+            {% if request.resolver_match.url_name == 'received_rentals' %}
+              bg-gray-900 text-white border-gray-900
+            {% else %}
+              bg-white text-gray-700 hover:bg-gray-50 border-gray-300
+            {% endif %}">
+    受け取った申請
+  </a>
+</div>
+
+
+    {% if messages %}
+      <div class="mb-4 space-y-2">
+        {% for message in messages %}
+          <div class="px-4 py-2 rounded-lg text-sm
+              {% if message.tags == 'success' %}
+                bg-green-50 text-green-800
+              {% elif message.tags == 'error' %}
+                bg-red-50 text-red-800
+              {% else %}
+                bg-gray-50 text-gray-800
+              {% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <section>
+      <div class="grid gap-6">
+        {% if my_active_rentals %}
+          {% for rental in my_active_rentals %}
+            {% include "frontend/rentals/_rental_card.html" with rental=rental is_my_rental=True %}
+          {% endfor %}
+        {% else %}
+          <div class="text-center py-16">
+            <h3 class="text-xl font-semibold text-gray-700 mb-2">レンタル申請がありません</h3>
+            <p class="text-gray-500">商品をレンタルして始めましょう。</p>
+          </div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

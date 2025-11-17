@@ -75,24 +75,87 @@ class ProductImage(models.Model):
 
 
 class Rental(models.Model):
-    class Status(models.IntegerChoices):
-        REQUESTED = 0, "申請中"
-        APPROVED  = 1, "承認"
-        REJECTED  = 2, "却下"
-        SHIPPED   = 3, "発送"
-        RECEIVED  = 4, "受取"
-        RETURNED  = 5, "返却"
-        COMPLETED = 6, "完了"
-        CANCELED  = 9, "キャンセル"
+    class Status(models.TextChoices):
+        REQUESTED        = "申請中", "申請中"
+        APPROVED         = "承認済み", "承認済み"
+        SHIPPED          = "発送済み", "発送済み"
+        RENTING          = "レンタル中", "レンタル中"
+        RETURN_SHIPPED   = "返却発送済み", "返却発送済み"
+        RETURNED         = "返却済み", "返却済み"
+        COMPLETED        = "完了", "完了"
+        CANCELED         = "キャンセル", "キャンセル"
 
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="rentals")
-    renter  = models.ForeignKey(User, on_delete=models.CASCADE, related_name="rentals")
+    # どの商品か
+    product = models.ForeignKey(
+        "marketplace.Product",
+        on_delete=models.CASCADE,
+        related_name="rentals",
+    )
+
+    # 借り手（ユーザーFK）
+    renter = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="rentals",
+    )
+
+    renter_email = models.EmailField(null=True, blank=True)
+    owner_email  = models.EmailField(null=True, blank=True)
+    product_title = models.CharField(max_length=255, null=True, blank=True)
+
+
+    # 個数・料金・日数
+    quantity    = models.PositiveIntegerField(default=1)
+    total_price = models.PositiveIntegerField(default=0)
+    total_days  = models.PositiveIntegerField(default=1)
+
+    # 配送情報・メッセージ
+    shipping_address = models.TextField(blank=True)
+    message          = models.TextField(blank=True)
+
+    # レンタル期間
     start_date = models.DateField()
     end_date   = models.DateField()
-    total_price = models.PositiveIntegerField(default=0)
-    status = models.IntegerField(choices=Status.choices, default=Status.REQUESTED)
+
+    # ステータス（文字列で管理）
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.REQUESTED,
+    )
+
+    # 作成日時
     created_at = models.DateTimeField(auto_now_add=True)
 
+
+    # 往路の発送
+    shipped_date_to_renter    = models.DateTimeField(null=True, blank=True)
+    tracking_number_to_renter = models.CharField(max_length=100, blank=True)
+
+    # 受取〜レンタル開始
+    received_date_by_renter = models.DateTimeField(null=True, blank=True)
+    rental_start_date       = models.DateTimeField(null=True, blank=True)
+
+    # 返送
+    shipped_date_return  = models.DateTimeField(null=True, blank=True)
+    tracking_number_return = models.CharField(max_length=100, blank=True)
+
+    # 返却完了・レンタル完了
+    returned_date  = models.DateTimeField(null=True, blank=True)
+    completed_date = models.DateTimeField(null=True, blank=True)
+
+    # 支払い方法（クレカ / 現地払い とか）
+    payment_method = models.CharField(max_length=50, blank=True)
+
+    # 便利プロパティ（今後も "rental.xxx" で触りやすくする用）
+
+    @property
+    def product_owner(self):
+        # Product 側に owner がいる前提
+        return getattr(self.product, "owner", None)
+
+    def __str__(self):
+        return f"{self.product_title} - {self.renter_email}"
 
 class Purchase(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="purchases")

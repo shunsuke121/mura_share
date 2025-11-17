@@ -12,7 +12,9 @@ urlpatterns = [
 
     # サイドバーで参照している名前をすべて定義
     path("purchases/", views.PurchaseListView.as_view(), name="purchases"),
-    path("rentals/",   views.RentalListPage.as_view(),   name="rentals"),
+    path("rentals/my/",       views.my_rentals,       name="my_rentals"),
+    path("rentals/received/", views.received_rentals, name="received_rentals"),
+    path("rentals/", views.my_rentals, name="rentals"),
     path("returns/",   views.ReturnListPage.as_view(),   name="returns"),
     path("messages/",  views.MessagesPage.as_view(),     name="messages"),
     path("profile/",   profile_view,                     name="profile"),
