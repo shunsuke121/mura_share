@@ -361,3 +361,89 @@ textarea.form-control {
   display:flex; align-items:center; justify-content:center; font-size:12px;
 }
 .purchases .empty-state{ color: hsl(var(--muted-foreground)); }
+
+/* ===== Rentals segmented tabs (画像の見た目) ===== */
+.rentals .segmented{
+  display:flex;
+  align-items:center;
+  gap:0;
+  width: min(880px, 100%);
+  margin: 0 auto 1.5rem;
+  padding: 2px;
+  border: 1px solid #E5E7EB;        /* 薄い枠線 */
+  border-radius: 9999px;             /* pill 形状 */
+  background: #FFFFFF;
+  box-shadow: 0 1px 0 rgba(16,24,40,.03); /* ごく薄い影 */
+}
+
+.rentals .seg-btn{
+  flex:1 1 0;
+  text-align:center;
+  text-decoration:none;
+  padding: 10px 16px;
+  border-radius: 9999px;
+  color:#6B7280;                      /* グレー文字 */
+  font-weight: 700;                   /* 太字（見本の感じ） */
+  line-height: 1.2;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+  border: 0;                          /* セグメント間の罫線は無し */
+}
+
+.rentals .seg-btn:hover{
+  background:#F8FAFC;                 /* うっすらホバー */
+  color:#0F172A;
+}
+
+.rentals .seg-btn.active{
+  background:#0F172A;                 /* ダークネイビー */
+  color:#FFFFFF;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+}
+
+/* ===== ページ上部の雰囲気（薄いグラデ）===== */
+.rentals-page,
+.container-xxl.rentals{
+  background: linear-gradient(180deg, #ffffff 0%, #FFFFFF 35%);
+  border-radius: 12px; /* 余白用の容器ならお好みで */
+}
+
+/* ===== 空状態（中央アイコン＋文言） ===== */
+.rentals .empty-state{
+  text-align:center;
+  color:#6B7280;
+  padding: 64px 0;
+}
+.rentals .empty-icon{
+  width:72px;
+  height:72px;
+  margin:0 auto 16px;
+  border-radius:50%;
+  background:#F3F4F6;
+  display:grid;
+  place-items:center;
+  box-shadow: inset 0 1px 0 rgba(0,0,0,.02);
+}
+.rentals .empty-title{
+  color:#111827;
+  font-weight:700;
+  margin-bottom:4px;
+}
+.rentals .empty-sub{
+  color:#6B7280;
+  font-size:14px;
+}
+
+/* ===== ヘッダー（タイトル/サブ）中央寄せ ===== */
+.rentals h2.fw-bold{
+  font-size: 28px;
+  margin-bottom: 4px;
+}
+.rentals .text-muted{
+  color:#6B7280 !important;
+}
+
+/* ===== レスポンシブ（幅が狭いときは100%） ===== */
+@media (max-width: 768px){
+  .rentals .segmented{ width:100%; }
+  .rentals .seg-btn{ padding: 10px 12px; font-weight:600; }
+}

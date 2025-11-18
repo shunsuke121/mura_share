@@ -1,23 +1,42 @@
 {% extends "base.html" %}
-{% block title %}レンタル管理{% endblock %}
+{% block title %}レンタル管理 - MURAシェア{% endblock %}
 
 {% block content %}
-<div class="page-inner">
-  <h1 class="h4 mb-1">レンタル管理</h1>
-  <p class="text-muted small mb-3">あなたのレンタル申請と受け取った申請を管理</p>
+<div class="container-xxl py-4 rentals">
 
-  <div class="d-flex gap-2 mb-4">
-    <a href="{% url 'frontend:rentals' %}?tab=mine"
-       class="btn {% if active_tab != 'received' %}btn-dark{% else %}btn-outline-dark{% endif %} rounded-pill px-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h2 class="fw-bold mb-1">レンタル管理</h2>
+      <div class="text-muted">あなたのレンタル申請と受け取った申請を管理</div>
+    </div>
+    <a href="{% url 'frontend:returns' %}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-counterclockwise me-1"></i>返品管理
+    </a>
+  </div>
+
+  {# フラッシュメッセージ #}
+  {% if messages %}
+    <div class="mb-3">
+      {% for message in messages %}
+        <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-danger{% else %}alert-secondary{% endif %} py-2 mb-2">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="segmented mb-4">
+    <a class="seg-btn {% if active_tab != 'received' %}active{% endif %}"
+       href="{% url 'frontend:rentals' %}?tab=mine">
       私の申請 ({{ mine|length }})
     </a>
-    <a href="{% url 'frontend:rentals' %}?tab=received"
-       class="btn {% if active_tab == 'received' %}btn-dark{% else %}btn-outline-dark{% endif %} rounded-pill px-4">
+    <a class="seg-btn {% if active_tab == 'received' %}active{% endif %}"
+       href="{% url 'frontend:rentals' %}?tab=received">
       受け取った申請 ({{ received|length }})
     </a>
   </div>
 
-  {% if active_tab == "received" %}
+  {% if active_tab == 'received' %}
     {% with items=received mode="received" %}
       {% include "frontend/rentals/_list.html" %}
     {% endwith %}

@@ -240,6 +240,25 @@ def _handle_rental_action(request, user, redirect_name):
 
     return redirect(redirect_name)
 
+@login_required
+def rentals_index(request):
+    """購入管理と同じUIのレンタル管理タブ（?tab=mine / ?tab=received）"""
+    tab = request.GET.get("tab", "mine")
+
+    qs = (
+        Rental.objects
+        .select_related("product", "renter", "product__owner")
+        .order_by("-created_at")
+    )
+    mine = qs.filter(renter=request.user)
+    received = qs.filter(product__owner=request.user)
+
+    context = {
+        "active_tab": "received" if tab == "received" else "mine",
+        "mine": mine,
+        "received": received,
+    }
+    return render(request, "frontend/rentals/index.html", context)
 
 @login_required
 def my_rentals(request):
