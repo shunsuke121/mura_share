@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+  <div class="card shadow-sm p-4" style="width: 100%; max-width: 500px;">
+    <h4 class="text-center mb-4">{{ product.title }} の申請</h4>
+
+    <div class="btn-group mb-4 w-100" role="group">
+      <button id="rentBtn" class="btn btn-outline-dark active" data-mode="rental">レンタル</button>
+      <button id="buyBtn" class="btn btn-outline-dark" data-mode="purchase">購入</button>
+    </div>
+
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="mode" id="mode" value="rental">
+
+      <div class="mb-3">
+        <label class="form-label">数量 *</label>
+        <input type="number" name="quantity" id="quantity" class="form-control" value="1" min="1">
+      </div>
+
+      <div class="alert alert-success mt-3">
+        <div class="d-flex justify-content-between">
+          <span id="price-label">レンタル価格 (1個あたり):</span>
+          <strong id="unit-price">¥{{ product.price|floatformat:0 }}</strong>
+        </div>
+        <hr>
+        <div class="d-flex justify-content-between">
+          <span>合計金額:</span>
+          <strong id="total">¥{{ product.price|floatformat:0 }}</strong>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-success w-100 mt-3">申請を送信する</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const basePrice = {{ product.price }};
+  const rentBtn = document.getElementById("rentBtn");
+  const buyBtn = document.getElementById("buyBtn");
+  const quantityInput = document.getElementById("quantity");
+  const unitPrice = document.getElementById("unit-price");
+  const total = document.getElementById("total");
+  const priceLabel = document.getElementById("price-label");
+  const modeInput = document.getElementById("mode");
+
+  let mode = "rental";
+
+  function calcPrice() {
+    const q = parseInt(quantityInput.value || 1);
+    const pricePerUnit = mode === "rental" ? basePrice * 0.5 : basePrice;
+    const totalPrice = pricePerUnit * q;
+    unitPrice.textContent = "¥" + pricePerUnit.toLocaleString();
+    total.textContent = "¥" + totalPrice.toLocaleString();
+    priceLabel.textContent = (mode === "rental")
+      ? "レンタル価格 (1個あたり):"
+      : "購入価格 (1個あたり):";
+    modeInput.value = mode;
+  }
+
+  rentBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    mode = "rental";
+    rentBtn.classList.add("active");
+    buyBtn.classList.remove("active");
+    calcPrice();
+  });
+
+  buyBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    mode = "purchase";
+    buyBtn.classList.add("active");
+    rentBtn.classList.remove("active");
+    calcPrice();
+  });
+
+  quantityInput.addEventListener("input", calcPrice);
+  calcPrice();
+</script>
+{% endblock %}

@@ -30,6 +30,7 @@ rooms_router.register(r"messages", ChatMessageViewSet, basename="room-messages")
 urlpatterns = [
     path("", include(("frontend.urls", "frontend"), namespace="frontend")), # ← ユーザー向け画面
     path("admin/", admin.site.urls),
+    path("chat/", include("chat.urls")), 
 
     # API
     path("api/v1/", include(router.urls)),

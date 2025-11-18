@@ -81,6 +81,33 @@
       <p class="text-muted">{{ product.owner_notes|linebreaksbr }}</p>
     {% endif %}
 
+      <!-- オーナー情報 ＆ メッセージボタン -->
+  <div class="mt-4 p-3 border rounded bg-white">
+    <h5 class="mb-3">オーナー情報</h5>
+    <div class="d-flex align-items-center">
+      <!-- アイコン：プロフィール画像があれば表示（なければ丸枠） -->
+      {% if product.owner.profile.avatar %}
+        <img src="{{ product.owner.profile.avatar.url }}" class="rounded-circle" width="60" height="60">
+      {% else %}
+        <div class="rounded-circle bg-secondary" style="width:60px;height:60px;"></div>
+      {% endif %}
+      <div class="ms-3">
+        <strong>{{ product.owner.username }}</strong><br>
+        <small class="text-muted">
+          出品数：{{ product.owner.products.count }} 件
+        </small>
+      </div>
+      <div class="ms-auto">
+        {% if user.is_authenticated and user.id != product.owner.id %}
+          <a href="{% url 'chat:start_chat' product.id %}" class="btn btn-outline-dark">
+            💬 メッセージ
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+
     {# ================= ここから右側の“申請ボックス” ================= #}
     <div class="card shadow-sm mt-4">
       <div class="card-body">
