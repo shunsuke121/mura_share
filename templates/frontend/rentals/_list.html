@@ -1,7 +1,7 @@
+{# 共通リスト: items と mode('mine' or 'received') を受け取る #}
 {% if items %}
   <div class="vstack gap-3">
     {% for rental in items %}
-      {# 既存のレンタルカードを流用。is_my_rental をモードで出し分け #}
       {% if mode == 'mine' %}
         {% include "frontend/rentals/_rental_card.html" with rental=rental is_my_rental=True %}
       {% else %}
@@ -10,12 +10,19 @@
     {% endfor %}
   </div>
 {% else %}
-  <div class="text-center text-muted py-5">
+  <div class="text-center py-5 empty-state">
+    <div class="empty-icon">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+        <path d="M3 7l1-2h16l1 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="#9CA3AF" stroke-width="1.6" />
+        <path d="M9 10h6" stroke="#9CA3AF" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+    </div>
     {% if mode == 'received' %}
-      受け取った申請はありません。
+      <div class="empty-title">受け取った申請はありません</div>
+      <div class="empty-sub">商品を投稿してレンタル申請を受け取りましょう。</div>
     {% else %}
-      レンタル申請はありません。
+      <div class="empty-title">レンタル申請がありません</div>
+      <div class="empty-sub">商品をレンタルして始めましょう。</div>
     {% endif %}
   </div>
 {% endif %}
-

@@ -1,66 +1,80 @@
+{# Purchase 1件分。存在しないフィールドは空で表示されるだけなので安全 #}
+<div class="bg-white shadow-sm border rounded-3 p-3">
+  <div class="d-flex justify-content-between gap-3">
+    <div class="flex-grow-1">
+      <h3 class="h6 mb-2 fw-bold">{{ order.product_title|default:order.product.title }}</h3>
 
+      <div class="d-flex flex-wrap gap-2 small">
+        <span class="badge bg-light text-secondary border">
+          {{ order.status|default:"ステータス不明" }}
+        </span>
+        {% if order.payment_method %}
+          <span class="badge bg-light text-primary border">
+            {{ order.payment_method }}
+          </span>
+        {% endif %}
+        <span class="badge bg-light text-purple border">
+          {{ order.quantity|default:1 }} 点
+        </span>
+      </div>
+    </div>
 
-<div class="d-flex flex-column gap-3">
-  {% for o in items %}
-    <div class="card purchase-card border-0 shadow-sm">
-      <div class="card-body d-flex gap-3 align-items-start">
-        <a href="{% url 'frontend:product_detail' o.product.id %}" class="thumb">
-          {% if o.product.image_url %}
-            <img src="{{ o.product.image_url }}" alt="">
+    <div class="text-end">
+      <div class="fs-5 fw-bold">¥{{ order.total_price|default:0|intcomma }}</div>
+      {% if order.created_at %}
+        <div class="text-muted small mt-1">{{ order.created_at|date:"Y年n月j日 H:i" }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="mt-3 small">
+    {% if order.shipping_address %}
+      <div class="border rounded-2 p-2 mb-2 bg-light">
+        <div class="text-muted">配送先</div>
+        <div>{{ order.shipping_address }}</div>
+      </div>
+    {% endif %}
+
+    {% if order.tracking_number_to_buyer %}
+      <div class="border rounded-2 p-2 mb-2 bg-light">
+        <div class="text-muted">配送追跡番号</div>
+        <div class="font-monospace">{{ order.tracking_number_to_buyer }}</div>
+      </div>
+    {% endif %}
+
+    <div class="row g-2">
+      <div class="col-12 col-md-6">
+        <div class="text-muted">購入者:</div>
+        <div class="fw-medium">
+          {% if is_my_purchase %}
+            {{ request.user.email }}
           {% else %}
-            <div class="noimg">No Image</div>
+            {{ order.buyer_email|default:order.buyer.email }}
           {% endif %}
-        </a>
-
-        <div class="flex-grow-1">
-          <div class="d-flex justify-content-between align-items-start">
-            <div class="pe-3">
-              <h5 class="mb-1">
-                <a class="text-decoration-none link-dark"
-                   href="{% url 'frontend:product_detail' o.product.id %}">{{ o.product.title }}</a>
-              </h5>
-
-              <div class="text-muted small mb-2">
-                {{ o.product.description|default:"説明なし"|truncatechars:90 }}
-              </div>
-
-              <div class="purchase-meta small">
-                <span class="badge bg-light text-dark border">{{ o.product.category }}</span>
-                {% if o.product.stock_quantity is not None %}
-                  <span class="text-muted">在庫: {{ o.product.stock_quantity }}</span>
-                {% endif %}
-              </div>
-            </div>
-
-            <div class="text-end">
-              <div class="fw-bold">¥{{ o.price|floatformat:0 }}</div>
-              <div class="text-muted small">{{ o.created_at|date:"Y/m/d H:i" }}</div>
-              <div class="mt-1">
-                {% with st=o.status %}
-                  {% if st == 'paid' or st == 'paid_flag' %}
-                    <span class="badge bg-primary">支払い完了</span>
-                  {% elif st == 'shipped' %}
-                    <span class="badge bg-info text-dark">発送済み</span>
-                  {% elif st == 'completed' %}
-                    <span class="badge bg-success">完了</span>
-                  {% elif st == 'canceled' %}
-                    <span class="badge bg-secondary">キャンセル</span>
-                  {% else %}
-                    <span class="badge bg-warning text-dark">{{ st }}</span>
-                  {% endif %}
-                {% endwith %}
-              </div>
-            </div>
-          </div>
-
-          <div class="mt-3 d-flex gap-2 justify-content-end">
-            <a href="{% url 'frontend:product_detail' o.product.id %}" class="btn btn-sm btn-outline-secondary">詳細</a>
-            {% if o.status == 'paid' or o.status == 'paid_flag' %}
-              <button class="btn btn-sm btn-outline-danger" disabled>キャンセル申請</button>
-            {% endif %}
-          </div>
+        </div>
+      </div>
+      <div class="col-12 col-md-6">
+        <div class="text-muted">出品者:</div>
+        <div class="fw-medium">
+          {{ order.owner_email|default:order.product.owner.email }}
         </div>
       </div>
     </div>
-  {% endfor %}
+
+    {% if order.message %}
+      <div class="border rounded-2 p-2 mt-2 bg-light">
+        <div class="text-muted">メッセージ</div>
+        <div>{{ order.message }}</div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="mt-3 d-flex gap-2 flex-wrap">
+    {% if order.product_id %}
+      <a class="btn btn-outline-secondary btn-sm"
+         href="{% url 'frontend:product_detail' order.product_id %}">詳細を見る</a>
+    {% else %}
+      <span class="btn btn-outline-secondary btn-sm disabled">詳細を見る</span>
+    {% endif %}
+  </div>
 </div>

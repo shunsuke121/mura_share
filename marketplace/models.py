@@ -158,11 +158,61 @@ class Rental(models.Model):
         return f"{self.product_title} - {self.renter_email}"
 
 class Purchase(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="purchases")
+    class Status(models.TextChoices):
+        REQUESTED  = "申請中",  "申請中"
+        SHIPPED    = "発送済み","発送済み"
+        COMPLETED  = "完了",    "完了"
+        CANCELED   = "キャンセル","キャンセル"
+
+    product = models.ForeignKey("marketplace.Product", on_delete=models.CASCADE, related_name="purchases")
     buyer   = models.ForeignKey(User, on_delete=models.CASCADE, related_name="purchases")
-    price   = models.PositiveIntegerField()
-    status  = models.CharField(max_length=20, default="paid_flag")
-    created_at = models.DateTimeField(auto_now_add=True)
+
+    # 参照を減らすための冗長カラム（テンプレの表示用）
+    product_title  = models.CharField(max_length=255, blank=True)
+    buyer_email    = models.EmailField(blank=True)
+    seller_email   = models.EmailField(blank=True)
+
+    shipping_address = models.CharField(max_length=255, blank=True)
+    payment_method   = models.CharField(max_length=50, blank=True)
+    message          = models.TextField(blank=True)
+
+    quantity       = models.PositiveIntegerField(default=1)
+    purchase_price = models.PositiveIntegerField(default=0)
+
+    status          = models.CharField(max_length=10, choices=Status.choices, default=Status.REQUESTED)
+    tracking_number = models.CharField(max_length=100, blank=True)
+
+    created_at     = models.DateTimeField(auto_now_add=True)
+    completed_date = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=["status"]),
+            models.Index(fields=["buyer_email"]),
+            models.Index(fields=["seller_email"]),
+        ]
+
+    def __str__(self):
+        return f"{self.product_title or self.product_id} / {self.buyer_email} ({self.status})"
+
+    @property
+    def created_date(self):
+        # テンプレ側で created_date を参照しても落ちないようにする
+        return self.created_at
+
+    def save(self, *args, **kwargs):
+        # 表示用の冗長カラムを自動補完
+        if self.product_id and not self.product_title:
+            self.product_title = getattr(self.product, "title", "") or ""
+        if self.product_id and not self.seller_email:
+            owner = getattr(self.product, "owner", None)
+            self.seller_email = getattr(owner, "email", "") if owner else ""
+        if self.buyer_id and not self.buyer_email:
+            self.buyer_email = getattr(self.buyer, "email", "") or ""
+        if self.purchase_price is None:
+            self.purchase_price = 0
+        super().save(*args, **kwargs)
 
 
 class Review(models.Model):
@@ -173,9 +223,6 @@ class Review(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 # --- RentalApplication（申請）モデル ここから追記 -------------------------
-from django.conf import settings
-from django.db import models
-
 class RentalApplication(models.Model):
     class OrderType(models.TextChoices):
         RENTAL = 'rental', 'レンタル'

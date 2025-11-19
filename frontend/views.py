@@ -9,8 +9,14 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
 
 from accounts.models import Profile
-from marketplace.models import Product, ProductImage, RentalApplication, Rental  # ★ 申請モデルも使う
-from notifications.models import Notification
+from marketplace.models import Product, ProductImage, RentalApplication, Rental, Purchase
+
+# 通知アプリが無い環境でも落ちないように
+try:
+    from notifications.models import Notification
+except Exception:
+    Notification = None
+
 
 # ========= 一覧・詳細など =========
 
@@ -24,7 +30,7 @@ class ProductListView(ListView):
         # 出品中だけ
         return Product.objects.filter(
             status=Product.Status.LISTED
-        ).order_by("-created_at")
+        ).order_by("-id")   # created_at 依存を避ける
 
 
 class ProductDetailView(DetailView):
@@ -43,8 +49,7 @@ class ProductDetailView(DetailView):
         is_owner = user.is_authenticated and getattr(p, "owner_id", None) == user.id
         ctx["is_owner"] = is_owner
 
-        # ▼ 提供方法（あなたのモデルは availability_type を日本語で保持）
-        #   値: 「レンタル・販売両方」「レンタルのみ」「販売のみ」
+        # ▼ 提供方法（availability_type は日本語値）
         t = getattr(p, "availability_type", "レンタル・販売両方")
         allow_rental = t in ("レンタル・販売両方", "レンタルのみ")
         allow_purchase = t in ("レンタル・販売両方", "販売のみ")
@@ -56,6 +61,7 @@ class ProductDetailView(DetailView):
 
 class PurchaseListView(TemplateView):
     template_name = "frontend/purchases/index.html"
+
 
 class ReturnListPage(TemplateView):
     template_name = "frontend/returns/index.html"
@@ -72,19 +78,40 @@ class DocumentationView(TemplateView):
 class AdminShippingView(TemplateView):
     template_name = "frontend/admin/shipping.html"
 
+
 # ========= レンタル管理（ページ分割） =========
 
 COMPLETED_STATUSES = ("完了", "キャンセル")
 
 
-def _create_notification(recipient_email, title, message, related_id, action_url_name):
+def _create_notification(
+    recipient_email,
+    title,
+    message,
+    related_id=None,
+    action_url_name=None,   # URL名 or そのままのパス
+    kind="rental",          # デフォルトは rental
+    action_url_kwargs=None
+):
+    """通知作成。通知アプリが無い/URL名が存在しない場合でも落ちないようにする。"""
+    if Notification is None:
+        return
+
+    url = ""
+    if action_url_name:
+        try:
+            url = reverse(action_url_name, kwargs=action_url_kwargs or {})
+        except Exception:
+            # 既にパスが入っているか、URL名が未登録ならそのまま保存
+            url = action_url_name
+
     Notification.objects.create(
-        recipient_email=recipient_email,
-        title=title,
-        message=message,
-        type="rental",
+        recipient_email=recipient_email or "",
+        title=(title or "")[:255],
+        message=message or "",
+        type=kind,
         related_id=related_id,
-        action_url=reverse(action_url_name),
+        action_url=url,
     )
 
 
@@ -126,9 +153,14 @@ def _handle_rental_action(request, user, redirect_name):
             product.available_quantity = (current_available or 0) - (rental.quantity or 1)
             product.save(update_fields=["available_quantity"])
 
-            _create_notification(rental.renter_email, "レンタル承認",
-                                 f"「{rental.product_title}」のレンタルが承認されました。",
-                                 rental.id, redirect_name)
+            _create_notification(
+                rental.renter_email,
+                "レンタル承認",
+                f"「{rental.product_title}」のレンタルが承認されました。",
+                rental.id,
+                redirect_name,
+                kind="rental",
+            )
             messages.success(request, "レンタルを承認しました。")
 
         elif action == "ship":
@@ -143,9 +175,14 @@ def _handle_rental_action(request, user, redirect_name):
             rental.tracking_number_to_renter = tracking_number
             rental.save(update_fields=["status", "shipped_date_to_renter", "tracking_number_to_renter"])
 
-            _create_notification(rental.renter_email, "商品発送のお知らせ",
-                                 f"「{rental.product_title}」が発送されました。到着したら「受取完了」を押してください。",
-                                 rental.id, redirect_name)
+            _create_notification(
+                rental.renter_email,
+                "商品発送のお知らせ",
+                f"「{rental.product_title}」が発送されました。到着したら「受取完了」を押してください。",
+                rental.id,
+                redirect_name,
+                kind="rental",
+            )
             messages.success(request, "商品を発送済みに更新しました。")
 
         elif action == "receive":
@@ -159,9 +196,14 @@ def _handle_rental_action(request, user, redirect_name):
             rental.rental_start_date = now
             rental.save(update_fields=["status", "received_date_by_renter", "rental_start_date"])
 
-            _create_notification(rental.owner_email, "商品受け取り完了",
-                                 f"「{rental.product_title}」が借り手に届き、レンタルが開始されました。",
-                                 rental.id, redirect_name)
+            _create_notification(
+                rental.owner_email,
+                "商品受け取り完了",
+                f"「{rental.product_title}」が借り手に届き、レンタルが開始されました。",
+                rental.id,
+                redirect_name,
+                kind="rental",
+            )
             messages.success(request, "受取完了として更新しました。")
 
         elif action == "return_ship":
@@ -176,9 +218,14 @@ def _handle_rental_action(request, user, redirect_name):
             rental.tracking_number_return = tracking_number
             rental.save(update_fields=["status", "shipped_date_return", "tracking_number_return"])
 
-            _create_notification(rental.owner_email, "商品返却発送のお知らせ",
-                                 f"「{rental.product_title}」が返却のために発送されました。到着確認をしてください。",
-                                 rental.id, redirect_name)
+            _create_notification(
+                rental.owner_email,
+                "商品返却発送のお知らせ",
+                f"「{rental.product_title}」が返却のために発送されました。到着確認をしてください。",
+                rental.id,
+                redirect_name,
+                kind="rental",
+            )
             messages.success(request, "返却発送済みに更新しました。")
 
         elif action == "confirm_return":
@@ -198,9 +245,14 @@ def _handle_rental_action(request, user, redirect_name):
             product.save(update_fields=["available_quantity"])
 
             for email in [rental.renter_email, rental.owner_email]:
-                _create_notification(email, "レンタル完了",
-                                     f"「{rental.product_title}」のレンタルが完了しました。",
-                                     rental.id, "frontend:profile")
+                _create_notification(
+                    email,
+                    "レンタル完了",
+                    f"「{rental.product_title}」のレンタルが完了しました。",
+                    rental.id,
+                    "frontend:profile",
+                    kind="rental",
+                )
 
             # 任意: 完了数を持っているなら +1
             if hasattr(user, "completed_rentals") and user.id in (rental.renter_id, rental.product.owner_id):
@@ -226,9 +278,14 @@ def _handle_rental_action(request, user, redirect_name):
                 product.save(update_fields=["available_quantity"])
 
             for email in [rental.renter_email, rental.owner_email]:
-                _create_notification(email, "レンタルキャンセル",
-                                     f"「{rental.product_title}」のレンタルがキャンセルされました。",
-                                     rental.id, redirect_name)
+                _create_notification(
+                    email,
+                    "レンタルキャンセル",
+                    f"「{rental.product_title}」のレンタルがキャンセルされました。",
+                    rental.id,
+                    redirect_name,
+                    kind="rental",
+                )
 
             messages.success(request, "レンタルをキャンセルしました。")
 
@@ -240,6 +297,7 @@ def _handle_rental_action(request, user, redirect_name):
 
     return redirect(redirect_name)
 
+
 @login_required
 def rentals_index(request):
     """購入管理と同じUIのレンタル管理タブ（?tab=mine / ?tab=received）"""
@@ -248,7 +306,7 @@ def rentals_index(request):
     qs = (
         Rental.objects
         .select_related("product", "renter", "product__owner")
-        .order_by("-created_at")
+        .order_by("-id")
     )
     mine = qs.filter(renter=request.user)
     received = qs.filter(product__owner=request.user)
@@ -259,6 +317,7 @@ def rentals_index(request):
         "received": received,
     }
     return render(request, "frontend/rentals/index.html", context)
+
 
 @login_required
 def my_rentals(request):
@@ -272,7 +331,7 @@ def my_rentals(request):
         Rental.objects
         .select_related("product", "renter", "product__owner")
         .filter(renter=user)
-        .order_by("-created_at")
+        .order_by("-id")
     )
     my_active_rentals = [r for r in rentals if r.status not in COMPLETED_STATUSES]
     return render(request, "frontend/rentals/my_rentals.html", {"my_active_rentals": my_active_rentals})
@@ -290,10 +349,171 @@ def received_rentals(request):
         Rental.objects
         .select_related("product", "renter", "product__owner")
         .filter(product__owner=user)
-        .order_by("-created_at")
+        .order_by("-id")
     )
     received_active_rentals = [r for r in rentals if r.status not in COMPLETED_STATUSES]
     return render(request, "frontend/rentals/received_rentals.html", {"received_active_rentals": received_active_rentals})
+
+
+def _handle_purchase_action(request, redirect_name):
+    """
+    POST:
+      - action: 'ship' | 'complete' | 'cancel'
+      - purchase_id: int
+      - tracking_number: str（ship のとき必須）
+    """
+    user = request.user
+    action = request.POST.get("action")
+    pid = request.POST.get("purchase_id")
+    tracking = (request.POST.get("tracking_number") or "").strip()
+
+    purchase = get_object_or_404(
+        Purchase.objects.select_related("product", "buyer", "product__owner"),
+        id=pid,
+    )
+
+    try:
+        if action == "ship":
+            # 出品者のみ、申請中のみ
+            if purchase.product.owner_id != user.id:
+                raise ValueError("発送権限がありません。")
+            if purchase.status != Purchase.Status.REQUESTED:
+                raise ValueError("申請中のみ発送できます。")
+            if not tracking:
+                raise ValueError("追跡番号を入力してください。")
+
+            purchase.status = Purchase.Status.SHIPPED
+            purchase.tracking_number = tracking
+            purchase.save(update_fields=["status", "tracking_number"])
+
+            # 在庫引き当て
+            product = purchase.product
+            current_available = product.available_quantity if product.available_quantity is not None else product.stock_quantity
+            product.available_quantity = max(0, (current_available or 0) - (purchase.quantity or 1))
+            product.save(update_fields=["available_quantity"])
+
+            _create_notification(
+                purchase.buyer_email,
+                "商品発送済み",
+                f"「{purchase.product_title}」が発送されました。到着後に受取完了を押してください。",
+                purchase.id,
+                redirect_name,
+                kind="purchase",
+            )
+            messages.success(request, "発送済みに更新しました。")
+
+        elif action == "complete":
+            # 購入者のみ、発送済みのみ
+            if purchase.buyer_id != user.id:
+                raise ValueError("受取完了は購入者のみ可能です。")
+            if purchase.status != Purchase.Status.SHIPPED:
+                raise ValueError("発送済みのみ受取完了にできます。")
+
+            purchase.status = Purchase.Status.COMPLETED
+            purchase.completed_date = timezone.now()
+            purchase.save(update_fields=["status", "completed_date"])
+
+            # 双方に通知
+            for email in [purchase.buyer_email, purchase.seller_email]:
+                _create_notification(
+                    email,
+                    "購入完了",
+                    f"「{purchase.product_title}」の購入が完了しました。",
+                    purchase.id,
+                    "frontend:profile",
+                    kind="purchase",
+                )
+
+            messages.success(request, "受取完了として更新しました。")
+
+        elif action == "cancel":
+            # 出品者か購入者。申請中のみを想定（運用で調整）
+            if user.id not in (purchase.buyer_id, purchase.product.owner_id):
+                raise ValueError("キャンセル権限がありません。")
+            if purchase.status != Purchase.Status.REQUESTED:
+                raise ValueError("申請中のみキャンセルできます。")
+
+            purchase.status = Purchase.Status.CANCELED
+            purchase.save(update_fields=["status"])
+
+            # 双方に通知
+            for email in [purchase.buyer_email, purchase.seller_email]:
+                _create_notification(
+                    email,
+                    "購入キャンセル",
+                    f"「{purchase.product_title}」の購入がキャンセルされました。",
+                    purchase.id,
+                    redirect_name,
+                    kind="purchase",
+                )
+
+            messages.success(request, "キャンセルしました。")
+
+        else:
+            raise ValueError("不明なアクションです。")
+
+    except Exception as e:
+        messages.error(request, f"処理に失敗しました: {e}")
+
+    return redirect(redirect_name)
+
+
+@login_required
+def purchases_index(request):
+    """
+    ?tab=mine / ?tab=received で切り替えるタブ式トップ
+    テンプレ: templates/frontend/purchases/index.html
+    """
+    tab = request.GET.get("tab", "mine")
+
+    qs = (Purchase.objects
+          .select_related("product", "buyer", "product__owner")
+          .order_by("-id"))
+
+    mine = qs.filter(buyer=request.user)
+    received = qs.filter(product__owner=request.user)
+
+    context = {
+        "active_tab": "received" if tab == "received" else "mine",
+        "mine": mine,
+        "received": received,
+    }
+    return render(request, "frontend/purchases/index.html", context)
+
+
+@login_required
+def my_purchases(request):
+    """
+    テンプレ: templates/frontend/purchases/my_purchases.html
+    POST アクションもここで受ける（受取完了など）
+    """
+    if request.method == "POST":
+        return _handle_purchase_action(request, redirect_name="frontend:my_purchases")
+
+    items = (Purchase.objects
+             .select_related("product", "buyer", "product__owner")
+             .filter(buyer=request.user)
+             .order_by("-id"))
+
+    return render(request, "frontend/purchases/my_purchases.html", {"my_purchases": items})
+
+
+@login_required
+def received_purchases(request):
+    """
+    テンプレ: templates/frontend/purchases/received_purchases.html
+    POST アクションもここで受ける（発送など）
+    """
+    if request.method == "POST":
+        return _handle_purchase_action(request, redirect_name="frontend:received_purchases")
+
+    items = (Purchase.objects
+             .select_related("product", "buyer", "product__owner")
+             .filter(product__owner=request.user)
+             .order_by("-id"))
+
+    return render(request, "frontend/purchases/received_purchases.html", {"received_purchases": items})
+
 
 # ========= 商品投稿 =========
 
@@ -390,14 +610,13 @@ def product_create(request):
             }
             return render(request, "frontend/products/form.html", {"form_data": form_data})
 
-        # --- Product作成（あなたのモデルのフィールド名に準拠）---
+        # --- Product作成 ---
         product = Product(
             owner=user,
             title=title,
             description=description,
             category=category,
             availability_type=availability_type,
-            # モデル側は price_per_day / price_buy
             price_per_day=daily_price_val if availability_type != "販売のみ" else None,
             price_buy=sale_price_val if availability_type != "レンタルのみ" else None,
             min_rental_days=min_rental_days_val,
@@ -422,7 +641,7 @@ def product_create(request):
         # 投稿完了＝詳細へ
         return redirect("frontend:product_detail", pk=product.pk)
 
-    # GET のとき：初期値
+    # GET
     form_data = {
         "availability_type": "レンタル・販売両方",
         "min_rental_days": 1,
@@ -434,7 +653,6 @@ def product_create(request):
 
 @login_required
 def product_create_done(request):
-    # （未使用でもOK）
     return render(request, "frontend/products/create_done.html")
 
 
@@ -490,7 +708,8 @@ def rental_apply(request, pk):
             errors.append("レンタル終了日は開始日以降を選択してください。")
 
     if errors:
-        for e in errors: messages.error(request, e)
+        for e in errors:
+            messages.error(request, e)
         return redirect("frontend:product_detail", pk=pk)
 
     # 申請レコード作成
@@ -515,14 +734,14 @@ def rental_apply(request, pk):
 @login_required
 def rental_manage(request):
     """オーナーが受け取った申請一覧（簡易）"""
-    apps = RentalApplication.objects.filter(owner=request.user).order_by("-created_at")
+    apps = RentalApplication.objects.filter(owner=request.user).order_by("-id")
     return render(request, "frontend/rentals/manage.html", {"applications": apps})
 
 
 @login_required
 def my_products(request):
     """オーナーの投稿商品一覧"""
-    items = Product.objects.filter(owner=request.user).order_by("-created_at")
+    items = Product.objects.filter(owner=request.user).order_by("-id")
     return render(request, "frontend/products/my_products.html", {"products": items})
 
 

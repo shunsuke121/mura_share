@@ -1,36 +1,24 @@
-{# templates/frontend/purchases/_list.html #}
-{# 期待: items = Purchase のリスト, mode = 'mine' or 'received' #}
-
-{% for o in items %}
-  <div class="card purch-card border-0 shadow-sm mb-3">
-    <div class="card-body d-flex align-items-center gap-3">
-
-      {% if o.product.image_url %}
-        <img class="thumb" src="{{ o.product.image_url }}" alt="">
-      {% else %}
-        <div class="noimg">No Image</div>
-      {% endif %}
-
-      <div class="flex-grow-1">
-        <div class="fw-semibold text-truncate">{{ o.product.title }}</div>
-        <div class="text-muted small">
-          注文日: {{ o.created_at|date:"Y/m/d H:i" }}
-          ・ 金額: ￥{{ o.price|default:o.product.price_buy|default:"-" }}
-        </div>
-        <div class="text-muted small">ステータス: {{ o.status }}</div>
-      </div>
-
-      <div class="text-end">
-        <a class="btn btn-sm btn-outline-secondary"
-           href="{% url 'frontend:product_detail' o.product_id %}">
-          商品を見る
-        </a>
-      </div>
-
+{# 共通リスト: items と mode('mine' or 'received') を受け取る #}
+{% if items %}
+  <div class="vstack gap-3">
+    {% for p in items %}
+      {% include "frontend/purchases/_purchase_card.html" with order=p mode=mode %}
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="text-center py-5 empty-state">
+    <div class="empty-icon">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+        <path d="M3 7l1-2h16l1 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="#9CA3AF" stroke-width="1.6" />
+        <path d="M9 10h6" stroke="#9CA3AF" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
     </div>
+    {% if mode == 'received' %}
+      <div class="empty-title">受け取った注文はありません</div>
+      <div class="empty-sub">商品を投稿して注文を受け取りましょう。</div>
+    {% else %}
+      <div class="empty-title">購入履歴はありません</div>
+      <div class="empty-sub">気になる商品を注文してみましょう。</div>
+    {% endif %}
   </div>
-{% empty %}
-  <div class="empty-state text-center py-5">
-    <div class="text-muted">データがありません。</div>
-  </div>
-{% endfor %}
+{% endif %}

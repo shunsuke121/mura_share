@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}購入管理 - 受け取った注文{% endblock %}
+
+{% block content %}
+<div class="container-xxl py-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h2 class="fw-bold mb-1">受け取った注文</h2>
+      <div class="text-muted">あなたの出品に入った注文の一覧</div>
+    </div>
+    <div class="btn-group">
+      <a href="{% url 'frontend:my_purchases' %}" class="btn btn-outline-dark">私の購入</a>
+      <a href="{% url 'frontend:received_purchases' %}" class="btn btn-dark">受け取った注文</a>
+    </div>
+  </div>
+
+  {% with items=received_purchases mode="received" %}
+    {% include "frontend/purchases/_list.html" %}
+  {% endwith %}
+</div>
+{% endblock %}

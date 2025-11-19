@@ -11,7 +11,10 @@ urlpatterns = [
     path("products/<int:pk>/", views.ProductDetailView.as_view(), name="product_detail"),
 
     # サイドバーで参照している名前をすべて定義
-    path("purchases/", views.PurchaseListView.as_view(), name="purchases"),
+    path("purchases/", views.purchases_index, name="purchases"),
+    path("purchases/my/", views.my_purchases, name="my_purchases"),
+    path("purchases/received/", views.received_purchases, name="received_purchases"),
+
     path("rentals/my/",       views.my_rentals,       name="my_rentals"),
     path("rentals/received/", views.received_rentals, name="received_rentals"),
     path("rentals/", views.rentals_index, name="rentals"),
