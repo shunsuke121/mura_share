@@ -2,19 +2,19 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
 from accounts.views import profile_view
-
+from django.views.generic import RedirectView 
 app_name = "frontend"
 
 urlpatterns = [
     path("", views.ProductListView.as_view(), name="products"),
     path("products/new/", views.product_create, name="product_new"),
     path("products/<int:pk>/", views.ProductDetailView.as_view(), name="product_detail"),
+    path("", RedirectView.as_view(pattern_name="frontend:products", permanent=False)),
 
     # サイドバーで参照している名前をすべて定義
     path("purchases/", views.purchases_index, name="purchases"),
     path("purchases/my/", views.my_purchases, name="my_purchases"),
     path("purchases/received/", views.received_purchases, name="received_purchases"),
-
     path("rentals/my/",       views.my_rentals,       name="my_rentals"),
     path("rentals/received/", views.received_rentals, name="received_rentals"),
     path("rentals/", views.rentals_index, name="rentals"),
