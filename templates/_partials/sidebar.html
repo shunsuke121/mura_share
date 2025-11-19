@@ -88,6 +88,16 @@
       <span class="sidebar-text">プロフィール</span>
     </a>
 
+        <!-- お問い合わせ -->
+    <a
+      href="{% url 'frontend:contact' %}"
+      class="sidebar-link {% if request.resolver_match.url_name == 'contact' %}is-active{% endif %}"
+    >
+      <span class="sidebar-icon bi bi-envelope"></span>
+      <span class="sidebar-text">お問い合わせ</span>
+    </a>
+
+
   </div>
 
 

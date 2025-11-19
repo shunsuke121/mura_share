@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{%block title %} お問い合わせ - MURAシェア{% endblock%}
+
+{% block content %}
+{% comment %} <!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>お問い合わせ — 会社名</title>
+
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+
+</head> {% endcomment %}
+
+<body>
+<div class="container">
+    <header>
+        <div class="logo">会社</div>
+        <div>
+            <h1>お問い合わせ</h1>
+            <p class="lead">質問・要望・不具合報告はこちらからお送りください。担当より72時間以内にご連絡します（営業日）。</p>
+        </div>
+    </header>
+
+    <main class="card" id="mainCard">
+        <div id="alert" class="hidden"></div>
+
+        <form id="contactForm" novalidate>
+            <!-- Honeypot (bot 対策) -->
+            <input type="text" name="website" id="website" class="hidden" autocomplete="off" tabindex="-1" />
+
+            <div class="row">
+                <div class="col">
+                    <label for="name">お名前 <span class="small">(必須)</span></label>
+                    <input id="name" name="name" type="text" placeholder="山田 太郎" required />
+                    <div class="error" data-for="name"></div>
+                </div>
+                <div class="col">
+                    <label for="company">会社名 / 団体名</label>
+                    <input id="company" name="company" type="text" placeholder="例：株式会社サンプル" />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <label for="email">メールアドレス <span class="small">(必須)</span></label>
+                    <input id="email" name="email" type="email" placeholder="example@example.com" required />
+                    <div class="error" data-for="email"></div>
+                </div>
+                <div class="col">
+                    <label for="phone">電話番号</label>
+                    <input id="phone" name="phone" type="tel" placeholder="080-1234-5678" />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <label for="type">お問い合わせ種別</label>
+                    <select id="type" name="type">
+                        <option value="general">一般的なお問い合わせ</option>
+                        <option value="support">サポート（不具合報告）</option>
+                        <option value="sales">導入・見積もり</option>
+                        <option value="other">その他</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <label for="subject">件名</label>
+                    <input id="subject" name="subject" type="text" placeholder="お問い合わせの件名" />
+                </div>
+            </div>
+
+            <label for="message">お問い合わせ内容 <span class="small">(必須)</span></label>
+            <textarea id="message" name="message" required placeholder="ご要望・不具合の詳細をできるだけ具体的にご記入ください..."></textarea>
+            <div class="error" data-for="message"></div>
+
+            <div style="margin-top:12px;">
+                <label for="attachment">添付ファイル（任意）</label>
+                <input id="attachment" name="attachment" type="file" accept="image/*,.pdf,.zip" />
+                <p class="small">最大5MB。画像・PDFを推奨。</p>
+            </div>
+
+            <div style="margin-top:12px;" class="flex-between">
+                <div>
+                    <label><input type="checkbox" id="consent" required /> <span class="small">個人情報の取り扱いについて同意します（必須）</span></label>
+                    <div class="error" data-for="consent"></div>
+                </div>
+                <div>
+                    <a class="teams-btn" id="teamsLink"
+                        href="https://teams.microsoft.com/l/message/19:ec7362a6-076a-4473-9490-4223d09e84a4_f41ac656-e055-4983-9300-5d6657d43cc9@unq.gbl.spaces/1762322704045?context=%7B%22contextType%22%3A%22chat%22%7D"
+                        target="_blank" rel="noopener noreferrer">Microsoft Teams で問い合わせる</a>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="primary">送信する</button>
+                <button type="reset" class="ghost">リセット</button>
+            </div>
+
+            <p class="note">※ このフォームはサンプルです。実運用する場合はサーバー側でのバリデーションとファイルウイルスチェックを必ず行ってください。</p>
+        </form>
+    </main>
+</div>
+
+<script>
+(function(){
+    const form = document.getElementById('contactForm');
+    const alertBox = document.getElementById('alert');
+
+    function showError(field, msg){
+        const el = document.querySelector('.error[data-for="'+field+'"]');
+        if(el) el.textContent = msg || '';
+    }
+    function clearErrors(){
+        document.querySelectorAll('.error').forEach(e=>e.textContent='');
+    }
+
+    form.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        clearErrors();
+        alertBox.className = 'hidden';
+
+        const name = form.name.value.trim();
+        const email = form.email.value.trim();
+        const message = form.message.value.trim();
+        const honeypot = form.website.value.trim();
+        const consent = form.consent.checked;
+
+        let ok = true;
+
+        if(honeypot){ return; }
+        if(!name){ showError('name','お名前を入力してください'); ok=false }
+        if(!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ showError('email','正しいメールアドレスを入力してください'); ok=false }
+        if(!message || message.length < 10){ showError('message','内容は10文字以上で入力してください'); ok=false }
+        if(!consent){ showError('consent','個人情報の取り扱いに同意してください'); ok=false }
+
+        if(!ok) return;
+
+        const fd = new FormData(form);
+
+        try{
+            const btn = form.querySelector('button.primary');
+            btn.disabled = true; btn.textContent = '送信中...';
+
+            const res = await fetch('/api/contact', { method:'POST', body: fd });
+            if(!res.ok){
+                const txt = await res.text();
+                throw new Error(txt || '送信に失敗しました');
+            }
+
+            alertBox.className = 'success';
+            alertBox.textContent = '送信が完了しました。担当より後ほどご連絡いたします。';
+            form.reset();
+
+        }catch(err){
+            alertBox.className = '';
+            alertBox.innerHTML = '<div class="error">送信中にエラーが発生しました。もう一度お試しください。</div>';
+            console.error(err);
+
+        }finally{
+            const btn = form.querySelector('button.primary');
+            btn.disabled = false; btn.textContent = '送信する';
+        }
+    });
+})();
+</script>
+</body>
+{% comment %} </html> {% endcomment %}
+
+{% endblock %}

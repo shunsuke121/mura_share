@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "frontend",
 
     # 追加（API/認証/スキーマ/CORS/フィルタ）
     "rest_framework",

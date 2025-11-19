@@ -533,3 +533,24 @@ textarea.form-control {
   .purchases .seg-btn{ padding: 10px 12px; font-weight:600; }
 }
 
+/* === Contactページ用のロゴとボタンの追加スタイル === */
+
+.logo {
+  color: orange;        /* ロゴ文字をオレンジ色に */
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.primary {
+  background-color: orange; /* ボタン背景をオレンジに */
+  color: #fff;              /* 文字は白 */
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.primary:hover {
+  background-color: #e69500; /* ホバー時の濃いオレンジ */
+}
+
