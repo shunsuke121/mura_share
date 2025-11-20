@@ -60,7 +60,7 @@ body {
 /* ===== React風サイドバー ===== */
 
 .sidebar {
-  width: 260px;
+  width: var(--sidebar-w);
   background: #f9fafb;              /* ← ここ白系に */
   color: #111827;                   /* 濃いグレー文字 */
   padding: 0.75rem;
@@ -187,6 +187,7 @@ body {
 .offcanvas .sidebar-nav {
   height: 100%;
 }
+
 
 
 /* ===== カード・ボタンをちょい shadcn 風に寄せる ===== */
@@ -659,3 +660,33 @@ textarea.form-control {
   font-weight: 700;
   text-transform: uppercase;
 }
+
+/* === Sidebar width: 広げる・揃える === */
+
+/* PCの固定幅。必要なら 300〜360px で調整してOK */
+.sidebar {
+  width: 320px !important;
+}
+
+/* オフキャンバスも同じ感覚に寄せる */
+#offcanvasSidebar {
+  --bs-offcanvas-width: 320px; /* デスクトップで開く場合の保険 */
+}
+
+/* モバイル時は画面の約9割にして操作しやすく */
+@media (max-width: 991.98px) {
+  #offcanvasSidebar {
+    --bs-offcanvas-width: 88vw;
+  }
+}
+
+/* メニュー文言が折れにくいよう少し余白増やす */
+.sidebar-link {
+  padding: 0.5rem 0.9rem;
+}
+
+/* アイコンとテキストが窮屈ならアイコン幅も少し広げる */
+.sidebar-icon {
+  width: 1.35rem;
+}
+

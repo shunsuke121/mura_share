@@ -15,32 +15,36 @@
 </head>
 <body>
 
-  {# ★ 二枚目スクショのヘッダーをここで include ★ #}
-  {% include "_partials/header.html" %}
-
   <div class="layout d-flex">
     <!-- サイドバー（PC） -->
     <aside class="d-none d-lg-block bg-white border-end sidebar p-3">
       {% include "_partials/sidebar.html" %}
     </aside>
 
-    <!-- モバイル用オフキャンバス -->
-    <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasSidebar">
-      <div class="offcanvas-header">
-        <h5 class="offcanvas-title">メニュー</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
-      </div>
-      <div class="offcanvas-body">
-        {% include "_partials/sidebar.html" %}
-      </div>
-    </div>
+    <!-- 右カラム（ヘッダー＋コンテンツ） -->
+    <div class="flex-grow-1 d-flex flex-column">
 
-    <!-- コンテンツ -->
-    <main class="content-wrap p-3 p-lg-4 w-100">
-      <div class="page-inner">
-        {% block content %}{% endblock %}
-      </div>
-    </main>
+      <!-- ヘッダーをここに移動 -->
+      {% include "_partials/header.html" %}
+
+      <!-- コンテンツ -->
+      <main class="content-wrap p-3 p-lg-4 w-100">
+        <div class="page-inner">
+          {% block content %}{% endblock %}
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- モバイル用オフキャンバス -->
+  <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasSidebar">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title">メニュー</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+      {% include "_partials/sidebar.html" %}
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
