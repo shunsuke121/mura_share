@@ -554,3 +554,109 @@ textarea.form-control {
   background-color: #e69500; /* ホバー時の濃いオレンジ */
 }
 
+
+/* ===== MURAヘッダー共通 ===== */
+.ms-header {
+  border-bottom: 1px solid #eee;
+  z-index: 1020;
+}
+
+/* 中央寄せコンテナ */
+.ms-header-inner {
+  max-width: 1200px;      /* 真ん中に収まる幅 */
+  margin: 0 auto;         /* 中央寄せ */
+  width: 100%;
+  padding: 8px 24px;
+  display: grid;
+  grid-template-columns: auto 1fr auto; /* 左ロゴ / 中央ナビ / 右アイコン */
+  align-items: center;
+  column-gap: 32px;
+}
+
+/* ロゴ */
+.ms-brand-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  margin-right: 10px;
+
+  /* ここだけ差し替え：sidebar-logo と同じ色 */
+  background: linear-gradient(135deg, #f97316, #ec4899); /* オレンジ → ピンク */
+  box-shadow: 0 4px 12px rgba(236,72,153,.25);
+}
+
+
+.ms-brand-text {
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: #1f2937;
+}
+
+/* 中央ナビをセンター揃え */
+.ms-nav {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+}
+
+.ms-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  color: #4b5563;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.ms-nav-link i {
+  font-size: 18px;
+}
+
+.ms-nav-link.is-active,
+.ms-nav-link:hover {
+  color: #111827;
+}
+
+/* 右エリア */
+.ms-header-right {
+  justify-content: flex-end;
+}
+
+.ms-icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #384152;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  text-decoration: none;
+}
+
+.ms-icon-btn:hover {
+  background: #f3f4f6;
+}
+
+.ms-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #e6e6e6;
+  background: radial-gradient(120px 120px at 30% 30%,#111827 0,#0f172a 70%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.08),
+    0 1px 6px rgba(0,0,0,.08);
+  font-weight: 700;
+  text-transform: uppercase;
+}
