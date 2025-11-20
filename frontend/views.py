@@ -26,17 +26,25 @@ except Exception:
  
 # ========= 一覧・詳細など =========
  
+CATEGORIES = [
+    "電子機器","家具","スポーツ用品","楽器","車両",
+    "アウトドア用品","ファッション","書籍・メディア","その他",
+]
+
+
 class ProductListView(ListView):
     model = Product
-    template_name = "frontend/products/index.html"  # 商品一覧テンプレ
+    template_name = "frontend/products/index.html"
     context_object_name = "products"
     paginate_by = 20
- 
+
     def get_queryset(self):
-        # 出品中だけ
-        return Product.objects.filter(
-            status=Product.Status.LISTED
-        ).order_by("-id")   # created_at 依存を避ける
+        return Product.objects.filter(status=Product.Status.LISTED).order_by("-id")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["categories"] = CATEGORIES
+        return ctx
  
  
 class ProductDetailView(DetailView):

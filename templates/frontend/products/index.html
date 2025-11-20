@@ -1,62 +1,143 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}商品一覧 - MURAシェア{% endblock %}
 
 {% block content %}
-<h1 class="h4 mb-3">商品一覧</h1>
+<style>
+  /* ヘッダー */
+  .products-head { position: sticky; top: 0; z-index: 10; background:#fff; border-bottom:1px solid #e5e7eb;}
+  .search-input { padding-left:36px; background:#f3f4f6; border:0; height:38px; border-radius:10px; }
+  .search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#9ca3af; }
 
-<div class="row g-3">
-  {% for p in products %}
-    <div class="col-6 col-md-4 col-lg-3">
-      <div class="card h-100 border-0 shadow-sm">
+  /* フィルター行 */
+  .filter-chip { min-width: 190px; }
+  .filter-row .form-select { border-radius:10px; height:38px; }
+  .filter-row .form-label { color:#6b7280; font-size:.9rem; margin-right:.5rem; }
 
-        {# 画像 #}
-        <a href="{% url 'frontend:product_detail' p.id %}">
-          <div class="ratio ratio-1x1 bg-light rounded-top overflow-hidden">
-            {% if p.image_url %}
-              <img src="{{ p.image_url }}" class="object-fit-cover w-100 h-100" alt="{{ p.title }}">
-            {% else %}
-              <div class="d-flex align-items-center justify-content-center text-muted fs-1">📦</div>
-            {% endif %}
-          </div>
-        </a>
+  /* グリッド */
+  .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  @media (max-width:992px){ .grid-3{ grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:576px){ .grid-3{ grid-template-columns:repeat(2,1fr);} }
 
-        <div class="card-body p-2">
-          {# 価格 (レンタル/販売のどちらか出す。両方あればレンタル優先で2行表示) #}
-          {% if p.price_per_day %}
-            <div class="small fw-semibold">¥{{ p.price_per_day|floatformat:0 }}/日</div>
-          {% endif %}
-          {% if p.price_buy %}
-            <div class="small text-muted">販売 ¥{{ p.price_buy|floatformat:0 }}</div>
-          {% endif %}
+  /* カード */
+  .product-card { border:0; border-radius:14px; box-shadow:0 2px 10px rgba(15,23,42,.06); overflow:hidden; background:#fff; }
+  .product-card .ratio { background:#f8fafc; }
+  .product-card img { object-fit:cover; width:100%; height:100%; }
+  .pc-body { padding:.6rem .6rem .75rem; }
+  .pc-title { font-weight:700; font-size:.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pc-cat { color:#6b7280; font-size:.8rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pc-desc { color:#6b7280; font-size:.8rem; margin-top:.2rem;
+             display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .pc-price { font-weight:700; font-size:.9rem; }
+  .pc-price-sub { color:#6b7280; font-size:.8rem; }
+  .pc-meta { color:#6b7280; font-size:.78rem; margin-top:.25rem; }
+  .pc-icons { display:flex; gap:.9rem; color:#6b7280; font-size:1rem; }
+  .pc-icons .bi { vertical-align:middle; }
+</style>
 
-          <div class="small fw-bold text-truncate">{{ p.title }}</div>
+<div class="filters-bar py-3 border-bottom bg-white mb-3">
+  <div class="container-xxl">
+    <div class="d-flex flex-wrap align-items-center gap-2 gap-md-3">
 
-          {% if p.category %}
-            <div class="text-muted small text-truncate">{{ p.category }}</div>
-          {% endif %}
-
-          {# 説明は2行で省略 #}
-          {% if p.description %}
-            <div class="text-muted small mt-1"
-                 style="-webkit-line-clamp:2;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;">
-              {{ p.description|striptags }}
-            </div>
-          {% endif %}
-
-          {# 在庫表示: available / total（数値が無ければスキップ） #}
-          {% if p.available_quantity or p.stock_quantity %}
-            <div class="text-muted small mt-1">
-              在庫:
-              {% if p.available_quantity %}{{ p.available_quantity }}{% else %}0{% endif %}
-              {% if p.stock_quantity %}/ {{ p.stock_quantity }}{% endif %}
-            </div>
-          {% endif %}
-        </div>
-
+      <!-- 検索 -->
+      <div class="position-relative flex-grow-1" style="min-width:240px;">
+        <i class="bi bi-search search-icon"></i>
+        <input
+          type="search"
+          name="q"
+          value="{{ request.GET.q }}"
+          class="form-control form-control-sm ps-5"  <-- ← 枠あり -->
       </div>
+
+      <!-- フィルター -->
+      <span class="filters-label text-muted d-none d-md-inline">フィルター:</span>
+
+      <select name="category" class="form-select form-select-sm w-auto">
+        <option value="">すべてのカテゴリ―</option>
+        <option value="電子機器">電子機器</option>
+        <option value="家具">家具</option>
+        <option value="スポーツ用品">スポーツ用品</option>
+        <option value="楽器">楽器</option>
+        <option value="車両">車両</option>
+        <option value="アウトドア用品">アウトドア用品</option>
+        <option value="ファッション">ファッション</option>
+        <option value="書籍・メディア">書籍・メディア</option>
+        <option value="その他">その他</option>
+      </select>
+
+      <select name="availability" class="form-select form-select-sm w-auto">
+        <option value="">すべて</option>
+        <option value="レンタル・販売両方">レンタル・販売両方</option>
+        <option value="レンタルのみ">レンタルのみ</option>
+        <option value="販売のみ">販売のみ</option>
+      </select>
+
+      <!-- 並び替え（右寄せ） -->
+      <div class="ms-auto d-flex align-items-center gap-2">
+        <span class="filters-label text-muted d-none d-md-inline">並び替え:</span>
+        <select name="sort" class="form-select form-select-sm w-auto">
+          <option value="-id">新着順</option>
+          <option value="price_asc">価格(安い順)</option>
+          <option value="price_desc">価格(高い順)</option>
+        </select>
+      </div>
+
     </div>
-  {% empty %}
-    <p class="text-muted">まだ商品がありません。</p>
-  {% endfor %}
+  </div>
+</div>
+
+
+<div class="container-xxl py-3">
+  {% if products %}
+    <div class="grid-3">
+      {% for p in products %}
+        <div class="product-card">
+          <a href="{% url 'frontend:product_detail' p.id %}">
+            <div class="ratio ratio-1x1">
+              {% if p.image_url %}
+                <img src="{{ p.image_url }}" alt="{{ p.title }}">
+              {% else %}
+                <div class="d-flex align-items-center justify-content-center text-muted fs-1">📦</div>
+              {% endif %}
+            </div>
+          </a>
+
+          <div class="pc-body">
+            <!-- 上段: いいね/コメントアイコン（飾り） -->
+            <div class="d-flex justify-content-between mb-1">
+              <div class="pc-icons">
+                <i class="bi bi-heart"></i>
+                <i class="bi bi-chat"></i>
+              </div>
+              {% if p.available_quantity or p.stock_quantity %}
+                <div class="pc-meta">在庫 {{ p.available_quantity|default:0 }}{% if p.stock_quantity %}/{{ p.stock_quantity }}{% endif %}</div>
+              {% endif %}
+            </div>
+
+            <!-- 価格 -->
+            {% if p.price_per_day %}
+              <div class="pc-price">¥{{ p.price_per_day|floatformat:0 }}/日</div>
+            {% endif %}
+            {% if p.price_buy %}
+              <div class="pc-price-sub">販売 ¥{{ p.price_buy|floatformat:0 }}</div>
+            {% endif %}
+
+            <!-- タイトル/カテゴリ/説明 -->
+            <div class="pc-title mt-1">{{ p.title }}</div>
+            {% if p.category %}<div class="pc-cat">{{ p.category }}</div>{% endif %}
+            {% if p.description %}<div class="pc-desc">{{ p.description|striptags }}</div>{% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-center py-5">
+      <div class="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle" style="width:80px;height:80px;background:#f3f4f6;">
+        <i class="bi bi-search" style="font-size:28px;color:#9ca3af;"></i>
+      </div>
+      <div class="fw-semibold">商品が見つかりませんでした</div>
+      <div class="text-muted">検索条件を変更してみてください</div>
+    </div>
+  {% endif %}
 </div>
 {% endblock %}

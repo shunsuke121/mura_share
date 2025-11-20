@@ -77,11 +77,28 @@
 
           <div class="row">
             <div class="col-md-6 mb-3">
-              <label class="form-label">カテゴリー <span class="text-danger">*</span></label>
-              <input type="text" name="category" class="form-control"
-                     value="{{ form_data.category|default_if_none:'' }}"
-                     placeholder="例：家電">
-            </div>
+  <label class="form-label">カテゴリー <span class="text-danger">*</span></label>
+  {% with cat=form_data.category|default_if_none:'' %}
+  <select name="category" class="form-select" required>
+    <option value="">選択してください</option>
+    <option value="電子機器"       {% if cat == "電子機器" %}selected{% endif %}>電子機器</option>
+    <option value="家具"           {% if cat == "家具" %}selected{% endif %}>家具</option>
+    <option value="スポーツ用品"   {% if cat == "スポーツ用品" %}selected{% endif %}>スポーツ用品</option>
+    <option value="楽器"           {% if cat == "楽器" %}selected{% endif %}>楽器</option>
+    <option value="車両"           {% if cat == "車両" %}selected{% endif %}>車両</option>
+    <option value="アウトドア用品" {% if cat == "アウトドア用品" %}selected{% endif %}>アウトドア用品</option>
+    <option value="ファッション"   {% if cat == "ファッション" %}selected{% endif %}>ファッション</option>
+    <option value="書籍・メディア" {% if cat == "書籍・メディア" %}selected{% endif %}>書籍・メディア</option>
+    <option value="その他"         {% if cat == "その他" %}selected{% endif %}>その他</option>
+
+    {# 既存値がリスト外だった場合の保険（バリデーションを通したいなら残す） #}
+    {% if cat and cat not in "電子機器,家具,スポーツ用品,楽器,車両,アウトドア用品,ファッション,書籍・メディア,その他" %}
+      <option value="{{ cat }}" selected hidden>{{ cat }}</option>
+    {% endif %}
+  </select>
+  {% endwith %}
+</div>
+
             <div class="col-md-6 mb-3">
               <label class="form-label">商品の状態 <span class="text-danger">*</span></label>
               {% with cond=form_data.condition|default_if_none:'' %}
