@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}アクセス拒否 (403){% endblock %}
+{% block content %}
+<div class="text-center py-5">
+  <h1 class="h4 mb-2">アクセスが許可されていません</h1>
+  <p class="text-muted mb-4">このページは管理者のみが利用できます。</p>
+  <a href="{% url 'frontend:products' %}" class="btn btn-dark">ホームに戻る</a>
+</div>
+{% endblock %}

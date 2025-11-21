@@ -44,6 +44,10 @@ urlpatterns = [
     path("api/v1/auth/me/", MeView.as_view(), name="me"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# 既存の urlpatterns の下など、モジュール直下にこれを追加
+handler403 = "frontend.views.error_403"
 
 

@@ -21,6 +21,8 @@ class Profile(models.Model):
         null=True,
     )
 
+    is_admin = models.BooleanField(default=False)
+
     def __str__(self):
         return self.display_name or self.user.username
 
@@ -28,4 +30,16 @@ class Profile(models.Model):
 @receiver(post_save, sender=User)
 def create_profile(sender, instance, created, **kwargs):
     if created:
-        Profile.objects.create(user=instance)
+        Profile.objects.create(user=instance, is_admin=False)
+
+@receiver(post_save, sender=User)
+def sync_profile_is_admin(sender, instance, **kwargs):
+    """
+    User.is_staff を Profile.is_admin に常時同期する。
+    管理画面でスタッフ権限を切り替えたときも即反映。
+    """
+    profile, _ = Profile.objects.get_or_create(user=instance)
+    flag = bool(instance.is_staff)
+    if profile.is_admin != flag:
+        profile.is_admin = flag
+        profile.save(update_fields=["is_admin"])

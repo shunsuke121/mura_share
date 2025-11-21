@@ -52,11 +52,14 @@
       <span class="sidebar-text">メッセージ</span>
     </a>
 
-    <a href="{% url 'frontend:admin_shipping' %}"
-       class="sidebar-link {% if request.resolver_match.url_name == 'admin_shipping' %}is-active{% endif %}">
-      <span class="sidebar-icon bi bi-truck"></span>
-      <span class="sidebar-text">配送管理</span>
-    </a>
+    {% if request.user.is_staff %}
+  <a href="{% url 'frontend:admin_shipping' %}"
+     class="sidebar-link {% if request.resolver_match.url_name == 'admin_shipping' %}is-active{% endif %}">
+    <span class="sidebar-icon bi bi-truck"></span>
+    <span class="sidebar-text">配送管理</span>
+  </a>
+{% endif %}
+
 
     <a href="{% url 'frontend:profile' %}"
        class="sidebar-link {% if request.resolver_match.url_name == 'profile' %}is-active{% endif %}">

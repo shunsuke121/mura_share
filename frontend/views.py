@@ -534,7 +534,10 @@ def received_purchases(request):
 @login_required
 def product_create(request):
     user = request.user
-    profile, _ = Profile.objects.get_or_create(user=user)
+    profile, _ = Profile.objects.get_or_create(
+    user=request.user,
+    defaults={"is_admin": False}
+)
  
     # 住所必須チェック
     if not profile.address:
@@ -841,3 +844,22 @@ def contact_api(request):
     # メール送信（省略：あなたのコードそのまま）
 
     return JsonResponse({"ok": True})
+
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.shortcuts import render
+
+# 追加: 管理者専用 Mixin
+class AdminRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    login_url = "frontend:login"
+    raise_exception = True  # 権限なしは 403 にする
+
+    def test_func(self):
+        return self.request.user.is_staff  # ここを role に変えるなら差し替え
+
+# 既存の管理ページビューを差し替え
+class AdminShippingView(AdminRequiredMixin, TemplateView):
+    template_name = "frontend/admin/shipping.html"
+
+# 追加: 403 ハンドラ
+def error_403(request, exception=None):
+    return render(request, "403.html", status=403)

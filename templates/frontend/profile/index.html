@@ -35,7 +35,12 @@
         <div>
           <span class="badge bg-warning text-dark">評価: 5.0</span>
           <span class="badge bg-primary">レンタル中</span>
-          <span class="badge bg-light text-dark border">一般ユーザー</span>
+          {# 管理者バッジ #}
+            {% if request.user.is_staff or profile.is_admin %}
+              <span class="badge bg-dark rounded-pill">管理者</span>
+            {% else %}
+              <span class="badge bg-secondary-subtle text-secondary rounded-pill">一般ユーザー</span>
+            {% endif %}
         </div>
       </div>
       <div>
