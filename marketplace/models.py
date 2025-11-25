@@ -185,6 +185,24 @@ class Purchase(models.Model):
     created_at     = models.DateTimeField(auto_now_add=True)
     completed_date = models.DateTimeField(null=True, blank=True)
 
+    class ReturnStatus(models.TextChoices):
+        NONE = "NONE", "なし"
+        REQUESTED = "REQUESTED", "申請中"
+        APPROVED = "APPROVED", "承諾済"
+        SHIPPED = "SHIPPED", "返送済み"
+        RECEIVED = "RECEIVED", "受領済み"
+        REJECTED = "REJECTED", "却下"
+
+    return_status = models.CharField(
+        max_length=20, choices=ReturnStatus.choices, default=ReturnStatus.NONE
+    )
+    return_reason = models.CharField(max_length=255, blank=True)
+    return_tracking_number = models.CharField(max_length=64, blank=True)
+    return_requested_at = models.DateTimeField(null=True, blank=True)
+    return_approved_at  = models.DateTimeField(null=True, blank=True)
+    return_shipped_at   = models.DateTimeField(null=True, blank=True)
+    return_received_at  = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         ordering = ("-created_at",)
         indexes = [

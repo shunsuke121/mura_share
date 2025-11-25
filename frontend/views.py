@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.utils.dateparse import parse_date
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db.models import Q
@@ -107,26 +108,68 @@ def _create_notification(
     kind="rental",          # デフォルトは rental
     action_url_kwargs=None
 ):
-    """通知作成。通知アプリが無い/URL名が存在しない場合でも落ちないようにする。"""
+    """Notification の実フィールドに合わせて安全に作成する。失敗しても全体は落とさない。"""
     if Notification is None:
         return
- 
+
+    # URL解決（名前でもパスでもOK）
     url = ""
     if action_url_name:
         try:
             url = reverse(action_url_name, kwargs=action_url_kwargs or {})
         except Exception:
-            # 既にパスが入っているか、URL名が未登録ならそのまま保存
             url = action_url_name
- 
-    Notification.objects.create(
-        recipient_email=recipient_email or "",
-        title=(title or "")[:255],
-        message=message or "",
-        type=kind,
-        related_id=related_id,
-        action_url=url,
-    )
+
+    try:
+        # モデルが持つ実フィールド一覧
+        try:
+            field_names = {
+                f.name for f in Notification._meta.get_fields()
+                if getattr(f, "concrete", True)
+            }
+        except Exception:
+            field_names = set()
+
+        def pick(*candidates):
+            """候補のうちモデルに存在する最初の名前を返す"""
+            for c in candidates:
+                if c in field_names:
+                    return c
+            return None
+
+        data = {}
+
+        k = pick("recipient_email", "email", "to_email")
+        if k:
+            data[k] = recipient_email or ""
+
+        k = pick("title", "subject")
+        if k:
+            data[k] = (title or "")[:255]
+
+        k = pick("message", "body", "content")
+        if k:
+            data[k] = message or ""
+
+        k = pick("type", "kind", "category")
+        if k:
+            data[k] = kind
+
+        k = pick("related_id", "object_id", "target_id")
+        if k and related_id is not None:
+            data[k] = related_id
+
+        k = pick("action_url", "url", "link_url")
+        if k and url:
+            data[k] = url
+
+        if data:
+            Notification.objects.create(**data)
+
+    except Exception:
+        # 通知で例外が出ても画面は壊さない
+        return
+
  
  
 def _ensure_owner(user, rental: Rental):
@@ -497,19 +540,25 @@ def purchases_index(request):
  
 @login_required
 def my_purchases(request):
-    """
-    テンプレ: templates/frontend/purchases/my_purchases.html
-    POST アクションもここで受ける（受取完了など）
-    """
     if request.method == "POST":
         return _handle_purchase_action(request, redirect_name="frontend:my_purchases")
- 
     items = (Purchase.objects
              .select_related("product", "buyer", "product__owner")
              .filter(buyer=request.user)
              .order_by("-id"))
- 
-    return render(request, "frontend/purchases/my_purchases.html", {"my_purchases": items})
+    return render(request, "frontend/purchases/my_purchases.html",
+                  {"my_purchases": items, "items": items, "mode": "mine"})
+
+@login_required
+def received_purchases(request):
+    if request.method == "POST":
+        return _handle_purchase_action(request, redirect_name="frontend:received_purchases")
+    items = (Purchase.objects
+             .select_related("product", "buyer", "product__owner")
+             .filter(product__owner=request.user)
+             .order_by("-id"))
+    return render(request, "frontend/purchases/received_purchases.html",
+                  {"received_purchases": items, "items": items, "mode": "received"})
  
  
 @login_required
@@ -667,85 +716,129 @@ def product_create(request):
     }
     return render(request, "frontend/products/form.html", {"form_data": form_data})
  
- 
 @login_required
 def product_create_done(request):
     return render(request, "frontend/products/create_done.html")
- 
  
 # ========= レンタル/購入 申請 & 管理 =========
  
 @login_required
 def rental_apply(request, pk):
-    """右側フォームからの申請作成"""
+    """右側フォームからの申請作成（レンタル/購入の分岐込み）"""
     product = get_object_or_404(Product, pk=pk)
- 
+
     # 自分の出品には申請不可
     if getattr(product, "owner_id", None) == request.user.id:
         messages.error(request, "自分が出品した商品には申請できません。")
         return redirect("frontend:product_detail", pk=pk)
- 
-    order_type = request.POST.get("order_type")           # 'rental' or 'purchase'
+
+    order_type = request.POST.get("order_type")  # 'rental' or 'purchase'
     quantity = int(request.POST.get("quantity") or 1)
- 
+
     postal_code = request.POST.get("postal_code", "")
     address = request.POST.get("address", "")
     payment_method = request.POST.get("payment_method")
     message_txt = request.POST.get("message", "")
- 
+
     start_date = request.POST.get("start_date") or None
     end_date   = request.POST.get("end_date") or None
- 
+
     # 提供方法チェック
     t = getattr(product, "availability_type", "レンタル・販売両方")
-    allow_rental = t in ("レンタル・販売両方", "レンタルのみ")
+    allow_rental   = t in ("レンタル・販売両方", "レンタルのみ")
     allow_purchase = t in ("レンタル・販売両方", "販売のみ")
-    if order_type == "rental" and not allow_rental:
-        messages.error(request, "この商品はレンタルできません。")
-        return redirect("frontend:product_detail", pk=pk)
-    if order_type == "purchase" and not allow_purchase:
-        messages.error(request, "この商品は購入できません。")
-        return redirect("frontend:product_detail", pk=pk)
- 
-    # バリデーション
+
+    # 共通バリデーション
     errors = []
     if quantity < 1:
         errors.append("個数は1以上にしてください。")
     if not payment_method:
         errors.append("決済方法を選択してください。")
- 
-    from django.utils.dateparse import parse_date
-    sd = ed = None
+
+    # --- 購入申請 ---
+    if order_type == "purchase":
+        if not allow_purchase:
+            messages.error(request, "この商品は購入できません。")
+            return redirect("frontend:product_detail", pk=pk)
+
+        if errors:
+            for e in errors:
+                messages.error(request, e)
+            return redirect("frontend:product_detail", pk=pk)
+
+        # Purchase モデルに実在するフィールドだけ詰める
+        fields = {f.name for f in Purchase._meta.get_fields()}
+        kwargs = {
+            "product": product,
+            "buyer": request.user,
+            "quantity": quantity,
+        }
+
+        Status = getattr(Purchase, "Status", None)
+        requested_value = getattr(Status, "REQUESTED", None)
+        if "status" in fields:
+            kwargs["status"] = requested_value or "申請中"
+
+        # 住所系の差異を吸収
+        if "postal_code" in fields:
+            kwargs["postal_code"] = postal_code
+        elif "shipping_postal_code" in fields:
+            kwargs["shipping_postal_code"] = postal_code
+
+        if "address" in fields:
+            kwargs["address"] = address
+        elif "shipping_address" in fields:
+            kwargs["shipping_address"] = address
+
+        if "payment_method" in fields:
+            kwargs["payment_method"] = payment_method
+        if "message" in fields:
+            kwargs["message"] = message_txt
+
+        # 金額系（存在すれば）
+        if getattr(product, "price_buy", None) is not None:
+            if "unit_price" in fields:
+                kwargs["unit_price"] = product.price_buy
+            if "total_price" in fields:
+                kwargs["total_price"] = (product.price_buy or 0) * quantity
+
+        Purchase.objects.create(**kwargs)
+        messages.success(request, "購入申請を送信しました。")
+        return redirect("frontend:purchases")
+
+    # --- レンタル申請 ---
     if order_type == "rental":
+        if not allow_rental:
+            messages.error(request, "この商品はレンタルできません。")
+            return redirect("frontend:product_detail", pk=pk)
+
         sd = parse_date(start_date) if start_date else None
         ed = parse_date(end_date) if end_date else None
         if not sd or not ed:
             errors.append("レンタル開始日・終了日を入力してください。")
         elif sd > ed:
             errors.append("レンタル終了日は開始日以降を選択してください。")
- 
-    if errors:
-        for e in errors:
-            messages.error(request, e)
+
+        if errors:
+            for e in errors:
+                messages.error(request, e)
+            return redirect("frontend:product_detail", pk=pk)
+
+        RentalApplication.objects.create(
+            product=product,
+            owner=product.owner,
+            renter=request.user,
+            order_type=order_type,
+            quantity=quantity,
+            start_date=sd,
+            end_date=ed,
+            postal_code=postal_code,
+            address=address,
+            payment_method=payment_method,
+            message=message_txt,
+        )
+        messages.success(request, "申請を送信しました。オーナーの承認をお待ちください。")
         return redirect("frontend:product_detail", pk=pk)
- 
-    # 申請レコード作成
-    RentalApplication.objects.create(
-        product=product,
-        owner=product.owner,          # 受け取り側
-        renter=request.user,          # 申請者
-        order_type=order_type,
-        quantity=quantity,
-        start_date=sd,
-        end_date=ed,
-        postal_code=postal_code,
-        address=address,
-        payment_method=payment_method,
-        message=message_txt,
-    )
- 
-    messages.success(request, "申請を送信しました。オーナーの承認をお待ちください。")
-    return redirect("frontend:product_detail", pk=pk)
  
  
 @login_required
@@ -760,6 +853,149 @@ def my_products(request):
     """オーナーの投稿商品一覧"""
     items = Product.objects.filter(owner=request.user).order_by("-id")
     return render(request, "frontend/products/my_products.html", {"products": items})
+
+# ========= 返品管理 =========
+@login_required
+def returns_index(request):
+    tab = request.GET.get("tab", "mine")
+
+    mine_qs = (Purchase.objects
+               .select_related("product", "buyer", "product__owner")
+               .filter(buyer=request.user))
+
+    # 完了済みは常に返品候補として出す。進行中は当然含む。
+    mine = mine_qs.filter(
+        Q(status__in=[getattr(Purchase.Status, "COMPLETED", "COMPLETED"), "完了"])
+        | Q(return_status__in=["REQUESTED", "APPROVED", "SHIPPED", "RECEIVED", "REJECTED"])
+    ).order_by("-id")
+
+    received = (Purchase.objects
+                .select_related("product", "buyer", "product__owner")
+                .filter(product__owner=request.user,
+                        return_status__in=["REQUESTED", "APPROVED", "SHIPPED"])
+                ).order_by("-id")
+
+    return render(request, "frontend/returns/index.html", {
+        "active_tab": "received" if tab == "received" else "mine",
+        "mine": mine, "received": received,
+    })
+
+
+@login_required
+def return_action(request):
+    if request.method != "POST":
+        return redirect("frontend:returns")
+
+    pid = request.POST.get("purchase_id")
+    action = request.POST.get("action")
+    tracking = (request.POST.get("tracking_number") or "").strip()
+    reason = (request.POST.get("reason") or "").strip()
+
+    purchase = get_object_or_404(
+        Purchase.objects.select_related("product", "buyer", "product__owner"), id=pid
+    )
+
+    try:
+        if action == "request_return":
+            # 購入者のみ、取引完了後のみ
+            if purchase.buyer_id != request.user.id:
+                raise ValueError("返品申請は購入者のみ可。")
+            if purchase.status not in [getattr(Purchase.Status, "COMPLETED", "COMPLETED"), "完了"]:
+                raise ValueError("取引完了後のみ申請可。")
+
+            purchase.return_status = "REQUESTED"
+            purchase.return_reason = reason[:255]
+            purchase.return_requested_at = timezone.now()
+            purchase.save(update_fields=["return_status", "return_reason", "return_requested_at"])
+
+            _create_notification(getattr(purchase.product.owner, "email", ""),
+                "返品申請が届きました",
+                f"「{purchase.product_title or purchase.product.title}」の返品が申請されました。",
+                purchase.id, "frontend:returns", kind="purchase")
+
+            messages.success(request, "返品を申請しました。承諾待ちです。")
+
+        elif action == "approve_return":
+            # 出品者のみ、申請中のみ
+            if purchase.product.owner_id != request.user.id:
+                raise ValueError("承諾は出品者のみ可。")
+            if purchase.return_status != "REQUESTED":
+                raise ValueError("申請中のみ承諾可。")
+
+            purchase.return_status = "APPROVED"
+            purchase.return_approved_at = timezone.now()
+            purchase.save(update_fields=["return_status", "return_approved_at"])
+
+            _create_notification(getattr(purchase.buyer, "email", ""),
+                "返品が承諾されました",
+                "返送の準備ができました。追跡番号を入力してください。",
+                purchase.id, "frontend:returns", kind="purchase")
+
+            messages.success(request, "返品を承諾しました。")
+
+        elif action == "reject_return":
+            # 出品者のみ、申請中のみ
+            if purchase.product.owner_id != request.user.id:
+                raise ValueError("却下は出品者のみ可。")
+            if purchase.return_status != "REQUESTED":
+                raise ValueError("申請中のみ却下可。")
+
+            purchase.return_status = "REJECTED"
+            purchase.save(update_fields=["return_status"])
+
+            _create_notification(getattr(purchase.buyer, "email", ""),
+                "返品申請が却下されました",
+                "返品申請は却下されました。",
+                purchase.id, "frontend:returns", kind="purchase")
+
+            messages.success(request, "返品申請を却下しました。")
+
+        elif action == "ship_back":
+            # 購入者のみ、APPROVED のときだけ追跡番号登録を解禁
+            if purchase.buyer_id != request.user.id:
+                raise ValueError("返送登録は購入者のみ可。")
+            if purchase.return_status != "APPROVED":
+                raise ValueError("承諾後にのみ返送可。")
+            if not tracking:
+                raise ValueError("返送の追跡番号を入力してください。")
+
+            purchase.return_status = "SHIPPED"
+            purchase.return_tracking_number = tracking
+            purchase.return_shipped_at = timezone.now()
+            purchase.save(update_fields=["return_status", "return_tracking_number", "return_shipped_at"])
+
+            _create_notification(getattr(purchase.product.owner, "email", ""),
+                "返品が返送されました",
+                f"追跡番号: {tracking}",
+                purchase.id, "frontend:returns", kind="purchase")
+
+            messages.success(request, "返送情報を登録しました。")
+
+        elif action == "receive_back":
+            # 出品者のみ、SHIPPED を受領
+            if purchase.product.owner_id != request.user.id:
+                raise ValueError("受領登録は出品者のみ可。")
+            if purchase.return_status != "SHIPPED":
+                raise ValueError("返送済みのみ受領可。")
+
+            purchase.return_status = "RECEIVED"
+            purchase.return_received_at = timezone.now()
+            purchase.save(update_fields=["return_status", "return_received_at"])
+
+            _create_notification(getattr(purchase.buyer, "email", ""),
+                "返品の受領が完了しました",
+                "返品の受領が完了しました。",
+                purchase.id, "frontend:returns", kind="purchase")
+
+            messages.success(request, "返品を受領済みにしました。")
+
+        else:
+            raise ValueError("不明なアクション。")
+
+    except Exception as e:
+        messages.error(request, f"処理に失敗しました: {e}")
+
+    return redirect("frontend:returns")
  
  
 # ========= 会員登録 =========

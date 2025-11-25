@@ -1,0 +1,12 @@
+{% if items %}
+  <div class="vstack gap-3">
+    {% for p in items %}
+      {% include "frontend/returns/_card.html" with order=p mode=mode %}
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="text-center py-5 empty-state">
+    <div class="empty-title">対象はありません</div>
+    <div class="empty-sub">完了済みの注文はここから返品できます</div>
+  </div>
+{% endif %}

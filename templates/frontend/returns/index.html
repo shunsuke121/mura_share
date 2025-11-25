@@ -1,67 +1,37 @@
 {% extends "base.html" %}
 {% block title %}返品管理 - MURAシェア{% endblock %}
-
 {% block content %}
-<style>
-  :root{
-    --ink:#0f172a;
-    --muted:#6b7280;
-    --line:#e5e7eb;
-    --chip-bg:#f8fafc;
-    --shadow:0 2px 12px rgba(15,23,42,.06);
-  }
-  .returns-wrap{max-width:980px;margin:48px auto 0;padding:0 16px;}
-  .back-row{display:flex;align-items:center;margin-bottom:20px;}
-  .back-btn{
-    display:inline-flex;align-items:center;gap:.35rem;
-    padding:.625rem 1rem;border:1px solid var(--line);
-    background:var(--chip-bg);border-radius:999px;
-    font-weight:600;color:#111827;text-decoration:none;
-    transition:transform .05s ease;
-  }
-  .back-btn:active{transform:translateY(1px)}
-  .back-btn svg{width:18px;height:18px}
-  .head{text-align:center;margin-top:8px;margin-bottom:28px}
-  .head h1{font-size:40px;line-height:1.15;margin:0;color:var(--ink);font-weight:800;letter-spacing:.01em}
-  .head p{margin-top:10px;margin-bottom:0;color:var(--muted)}
-  .empty{
-    margin:56px auto 0;max-width:560px;text-align:center;
-  }
-  .empty .icon{
-    width:76px;height:76px;border-radius:50%;
-    border:1px solid var(--line);background:#fff;
-    display:flex;align-items:center;justify-content:center;
-    margin:0 auto 18px;box-shadow:var(--shadow);
-  }
-  .empty .icon svg{width:34px;height:34px}
-  .empty .title{font-weight:700;color:#111827;margin-bottom:6px}
-  .empty .note{color:var(--muted);margin:0}
-</style>
-
-<div class="returns-wrap">
-  <div class="back-row">
-    <a class="back-btn" href="{% url 'frontend:purchases' %}">
-      <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-        <path d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
-      </svg>
-      購入管理に戻る
-    </a>
-  </div>
-
-  <div class="head">
-    <h1>返品管理</h1>
-    <p>購入商品の返品申請と管理</p>
-  </div>
-
-  <div class="empty">
-    <div class="icon" aria-hidden="true">
-      <svg viewBox="0 0 16 16" fill="currentColor">
-        <path d="M8.186 1.113a1 1 0 0 0-.372 0L2 2.5l6 1.5 6-1.5-5.814-1.387z"/>
-        <path d="M14 4.118 8 5.618 2 4.118V13a1 1 0 0 0 .723.957l4.5 1.286a1 1 0 0 0 .554 0l4.5-1.286A1 1 0 0 0 14 13V4.118zM7.5 14.5l-4-1.143V5.51l4 1.046V14.5zm1 0V6.556l4-1.046v7.847l-4 1.143z"/>
-      </svg>
+<div class="container-xxl py-4 purchases returns">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h2 class="fw-bold mb-1">返品管理</h2>
+      <div class="text-muted">ロールに応じて操作</div>
     </div>
-    <p class="title">返品可能な商品がありません</p>
-    <p class="note">購入完了から7日以内の商品が表示されます</p>
   </div>
+
+  {% if messages %}
+    <div class="mb-3">
+      {% for message in messages %}
+        <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-danger{% else %}alert-secondary{% endif %} py-2 mb-2">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="segmented mb-4">
+    <a class="seg-btn {% if active_tab != 'received' %}active{% endif %}" href="{% url 'frontend:returns' %}?tab=mine">私の返品</a>
+    <a class="seg-btn {% if active_tab == 'received' %}active{% endif %}" href="{% url 'frontend:returns' %}?tab=received">受け取る返品</a>
+  </div>
+
+  {% if active_tab == 'received' %}
+    {% with items=received mode="received" %}
+      {% include "frontend/returns/_list.html" %}
+    {% endwith %}
+  {% else %}
+    {% with items=mine mode="mine" %}
+      {% include "frontend/returns/_list.html" %}
+    {% endwith %}
+  {% endif %}
 </div>
 {% endblock %}

@@ -21,7 +21,11 @@ urlpatterns = [
     path("rentals/my/",       views.my_rentals,       name="my_rentals"),
     path("rentals/received/", views.received_rentals, name="received_rentals"),
     path("rentals/", views.rentals_index, name="rentals"),
-    path("returns/",   views.ReturnListPage.as_view(),   name="returns"),
+    
+    path("returns/", views.returns_index, name="returns"),
+    path("returns/action/", views.return_action, name="return_action"),
+
+
     path("messages/",  views.MessagesPage.as_view(),     name="messages"),
     path("profile/",   profile_view,                     name="profile"),
     path("docs/",      views.DocumentationView.as_view(),name="docs"),
