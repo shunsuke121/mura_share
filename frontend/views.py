@@ -13,8 +13,14 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import EmailMessage
 from django.conf import settings
 from .models import ContactInquiry
+<<<<<<< HEAD
 import re
  
+=======
+from django.db import transaction
+import requests
+
+>>>>>>> cb624c1 (変更要約)
 from accounts.models import Profile
 from marketplace.models import Product, ProductImage, RentalApplication, Rental, Purchase
  
@@ -412,107 +418,111 @@ def received_rentals(request):
     return render(request, "frontend/rentals/received_rentals.html", {"received_active_rentals": received_active_rentals})
  
  
+
 def _handle_purchase_action(request, redirect_name):
-    """
-    POST:
-      - action: 'ship' | 'complete' | 'cancel'
-      - purchase_id: int
-      - tracking_number: str（ship のとき必須）
-    """
     user = request.user
     action = request.POST.get("action")
     pid = request.POST.get("purchase_id")
     tracking = (request.POST.get("tracking_number") or "").strip()
- 
+
     purchase = get_object_or_404(
         Purchase.objects.select_related("product", "buyer", "product__owner"),
         id=pid,
     )
- 
+
+    # ステータス定数（モデルに未定義でも動くようフォールバック）
+    P = getattr(Purchase, "Status", None)
+    S_PENDING   = (getattr(P, "PENDING",   "PENDING"))
+    S_APPROVED  = (getattr(P, "APPROVED",  "APPROVED"))
+    S_SHIPPED   = (getattr(P, "SHIPPED",   "SHIPPED"))
+    S_COMPLETED = (getattr(P, "COMPLETED", "COMPLETED"))
+    S_CANCELED  = (getattr(P, "CANCELED",  "CANCELED"))
+
+    st_now = purchase.status or ""
+    is_pending_like = st_now in (S_PENDING, "REQUESTED", "申請中")
+
     try:
-        if action == "ship":
-            # 出品者のみ、申請中のみ
-            if purchase.product.owner_id != user.id:
-                raise ValueError("発送権限がありません。")
-            if purchase.status != Purchase.Status.REQUESTED:
-                raise ValueError("申請中のみ発送できます。")
-            if not tracking:
-                raise ValueError("追跡番号を入力してください。")
- 
-            purchase.status = Purchase.Status.SHIPPED
-            purchase.tracking_number = tracking
-            purchase.save(update_fields=["status", "tracking_number"])
- 
-            # 在庫引き当て
-            product = purchase.product
-            current_available = product.available_quantity if product.available_quantity is not None else product.stock_quantity
-            product.available_quantity = max(0, (current_available or 0) - (purchase.quantity or 1))
-            product.save(update_fields=["available_quantity"])
- 
-            _create_notification(
-                purchase.buyer_email,
-                "商品発送済み",
-                f"「{purchase.product_title}」が発送されました。到着後に受取完了を押してください。",
-                purchase.id,
-                redirect_name,
-                kind="purchase",
-            )
-            messages.success(request, "発送済みに更新しました。")
- 
-        elif action == "complete":
-            # 購入者のみ、発送済みのみ
-            if purchase.buyer_id != user.id:
-                raise ValueError("受取完了は購入者のみ可能です。")
-            if purchase.status != Purchase.Status.SHIPPED:
-                raise ValueError("発送済みのみ受取完了にできます。")
- 
-            purchase.status = Purchase.Status.COMPLETED
-            purchase.completed_date = timezone.now()
-            purchase.save(update_fields=["status", "completed_date"])
- 
-            # 双方に通知
-            for email in [purchase.buyer_email, purchase.seller_email]:
-                _create_notification(
-                    email,
-                    "購入完了",
-                    f"「{purchase.product_title}」の購入が完了しました。",
-                    purchase.id,
-                    "frontend:profile",
-                    kind="purchase",
-                )
- 
-            messages.success(request, "受取完了として更新しました。")
- 
-        elif action == "cancel":
-            # 出品者か購入者。申請中のみを想定（運用で調整）
-            if user.id not in (purchase.buyer_id, purchase.product.owner_id):
-                raise ValueError("キャンセル権限がありません。")
-            if purchase.status != Purchase.Status.REQUESTED:
-                raise ValueError("申請中のみキャンセルできます。")
- 
-            purchase.status = Purchase.Status.CANCELED
-            purchase.save(update_fields=["status"])
- 
-            # 双方に通知
-            for email in [purchase.buyer_email, purchase.seller_email]:
-                _create_notification(
-                    email,
-                    "購入キャンセル",
-                    f"「{purchase.product_title}」の購入がキャンセルされました。",
-                    purchase.id,
-                    redirect_name,
-                    kind="purchase",
-                )
- 
-            messages.success(request, "キャンセルしました。")
- 
-        else:
-            raise ValueError("不明なアクションです。")
- 
+        with transaction.atomic():
+            if action == "approve":
+                # 出品者のみ、承認待ちのみ
+                if purchase.product.owner_id != user.id:
+                    raise ValueError("承認権限がありません。")
+                if not is_pending_like:
+                    raise ValueError("承認待ちのみ承認できます。")
+
+                purchase.status = S_APPROVED
+                if hasattr(purchase, "approved_at"):
+                    purchase.approved_at = timezone.now()
+                    purchase.save(update_fields=["status", "approved_at"])
+                else:
+                    purchase.save(update_fields=["status"])
+
+                messages.success(request, "承認しました。追跡番号入力が有効になりました。")
+
+            elif action == "ship":
+                # 出品者のみ、承認済みのみ
+                if purchase.product.owner_id != user.id:
+                    raise ValueError("発送権限がありません。")
+                if purchase.status != S_APPROVED:
+                    raise ValueError("承認済みのみ配送できます。")
+                if not tracking:
+                    raise ValueError("追跡番号を入力してください。")
+
+                # 追跡番号 + 在庫引当
+                purchase.tracking_number = tracking
+                purchase.status = S_SHIPPED
+                update_fields = ["tracking_number", "status"]
+
+                if hasattr(purchase, "shipped_at"):
+                    purchase.shipped_at = timezone.now()
+                    update_fields.append("shipped_at")
+
+                # 在庫（available_quantity があれば減算）
+                product = purchase.product
+                if hasattr(product, "available_quantity"):
+                    current = product.available_quantity if product.available_quantity is not None else getattr(product, "stock_quantity", 0)
+                    product.available_quantity = max(0, (current or 0) - (purchase.quantity or 1))
+                    product.save(update_fields=["available_quantity"])
+
+                purchase.save(update_fields=update_fields)
+                messages.success(request, "発送済みに更新しました。")
+
+            elif action == "complete":
+                # 購入者のみ、承認済み以降（APPROVED/SHIPPED）
+                if purchase.buyer_id != user.id:
+                    raise ValueError("受取完了は購入者のみ可能です。")
+                if purchase.status not in (S_APPROVED, S_SHIPPED):
+                    raise ValueError("承認後のみ受取完了にできます。")
+
+                purchase.status = S_COMPLETED
+                if hasattr(purchase, "completed_date"):
+                    purchase.completed_date = timezone.now()
+                    purchase.save(update_fields=["status", "completed_date"])
+                else:
+                    purchase.save(update_fields=["status"])
+
+                messages.success(request, "受取完了として更新しました。")
+
+            elif action == "cancel":
+                # 当事者のみ、承認待ちのみ
+                if user.id not in (purchase.buyer_id, purchase.product.owner_id):
+                    raise ValueError("キャンセル権限がありません。")
+                if not is_pending_like:
+                    raise ValueError("承認待ちのみキャンセルできます。")
+
+                purchase.status = S_CANCELED
+                purchase.save(update_fields=["status"])
+                messages.success(request, "キャンセルしました。")
+
+            else:
+                raise ValueError("不明なアクションです。")
+
     except Exception as e:
         messages.error(request, f"処理に失敗しました: {e}")
- 
+
     return redirect(redirect_name)
+
+
  
  
 @login_required
@@ -724,7 +734,11 @@ def product_create_done(request):
  
 @login_required
 def rental_apply(request, pk):
+<<<<<<< HEAD
     """右側フォームからの申請作成（レンタル/購入の分岐込み）"""
+=======
+    """商品詳細の右カラムから レンタル/購入 を申請する"""
+>>>>>>> cb624c1 (変更要約)
     product = get_object_or_404(Product, pk=pk)
 
     # 自分の出品には申請不可
@@ -732,6 +746,7 @@ def rental_apply(request, pk):
         messages.error(request, "自分が出品した商品には申請できません。")
         return redirect("frontend:product_detail", pk=pk)
 
+<<<<<<< HEAD
     order_type = request.POST.get("order_type")  # 'rental' or 'purchase'
     quantity = int(request.POST.get("quantity") or 1)
 
@@ -739,6 +754,16 @@ def rental_apply(request, pk):
     address = request.POST.get("address", "")
     payment_method = request.POST.get("payment_method")
     message_txt = request.POST.get("message", "")
+=======
+    # 入力値
+    order_type = (request.POST.get("order_type") or "").strip()  # 'rental' | 'purchase'
+    quantity = int(request.POST.get("quantity") or 1)
+
+    postal_code = (request.POST.get("postal_code") or "").strip()
+    address = (request.POST.get("address") or "").strip()
+    payment_method = (request.POST.get("payment_method") or "").strip()
+    message_txt = (request.POST.get("message") or "").strip()
+>>>>>>> cb624c1 (変更要約)
 
     start_date = request.POST.get("start_date") or None
     end_date   = request.POST.get("end_date") or None
@@ -755,7 +780,15 @@ def rental_apply(request, pk):
     if not payment_method:
         errors.append("決済方法を選択してください。")
 
+<<<<<<< HEAD
     # --- 購入申請 ---
+=======
+    # order_type 妥当性
+    if order_type not in ("rental", "purchase"):
+        errors.append("不正な注文種別です。ページを更新してやり直してください。")
+
+    # ここで購入フロー
+>>>>>>> cb624c1 (変更要約)
     if order_type == "purchase":
         if not allow_purchase:
             messages.error(request, "この商品は購入できません。")
@@ -766,6 +799,7 @@ def rental_apply(request, pk):
                 messages.error(request, e)
             return redirect("frontend:product_detail", pk=pk)
 
+<<<<<<< HEAD
         # Purchase モデルに実在するフィールドだけ詰める
         fields = {f.name for f in Purchase._meta.get_fields()}
         kwargs = {
@@ -807,11 +841,49 @@ def rental_apply(request, pk):
         return redirect("frontend:purchases")
 
     # --- レンタル申請 ---
+=======
+        # 初期ステータスはモデルに合わせて決定（PENDINGが無ければREQUESTED）
+        try:
+            initial_status = Purchase.Status.PENDING
+        except Exception:
+            initial_status = getattr(Purchase.Status, "REQUESTED", "REQUESTED")
+
+        # 余計なフィールドは渡さない（存在確認してから詰める）
+        create_kwargs = dict(
+            product=product,
+            buyer=request.user,
+            quantity=quantity,
+            status=initial_status,
+        )
+        if hasattr(Purchase, "product_title"):
+            create_kwargs["product_title"] = getattr(product, "title", "")
+        if hasattr(Purchase, "buyer_email"):
+            create_kwargs["buyer_email"] = getattr(request.user, "email", "")
+        if hasattr(Purchase, "seller_email"):
+            create_kwargs["seller_email"] = getattr(product.owner, "email", "") if getattr(product, "owner", None) else ""
+        if hasattr(Purchase, "shipping_address"):
+            # postal_code 専用カラムが無いなら住所に含める
+            create_kwargs["shipping_address"] = address if not postal_code else f"{address}（〒{postal_code}）"
+        if hasattr(Purchase, "payment_method"):
+            create_kwargs["payment_method"] = payment_method
+        if hasattr(Purchase, "message"):
+            create_kwargs["message"] = message_txt
+
+        Purchase.objects.create(**create_kwargs)
+        messages.success(request, "購入申請を送信しました。")
+        return redirect("frontend:purchases")
+
+    # ここからレンタルフロー
+>>>>>>> cb624c1 (変更要約)
     if order_type == "rental":
         if not allow_rental:
             messages.error(request, "この商品はレンタルできません。")
             return redirect("frontend:product_detail", pk=pk)
 
+<<<<<<< HEAD
+=======
+        from django.utils.dateparse import parse_date
+>>>>>>> cb624c1 (変更要約)
         sd = parse_date(start_date) if start_date else None
         ed = parse_date(end_date) if end_date else None
         if not sd or not ed:
@@ -826,8 +898,13 @@ def rental_apply(request, pk):
 
         RentalApplication.objects.create(
             product=product,
+<<<<<<< HEAD
             owner=product.owner,
             renter=request.user,
+=======
+            owner=product.owner,      # 受け取り側
+            renter=request.user,      # 申請者
+>>>>>>> cb624c1 (変更要約)
             order_type=order_type,
             quantity=quantity,
             start_date=sd,
@@ -839,6 +916,14 @@ def rental_apply(request, pk):
         )
         messages.success(request, "申請を送信しました。オーナーの承認をお待ちください。")
         return redirect("frontend:product_detail", pk=pk)
+<<<<<<< HEAD
+=======
+
+    # ここまでで return されていない場合の最終退避
+    messages.error(request, "不正なリクエストです。")
+    return redirect("frontend:product_detail", pk=pk)
+
+>>>>>>> cb624c1 (変更要約)
  
  
 @login_required

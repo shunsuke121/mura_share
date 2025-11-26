@@ -17,34 +17,24 @@
   {% if messages %}
     <div class="mb-3">
       {% for message in messages %}
-        <div class="alert alert-{{ message.tags|default:'secondary' }} py-2 mb-2" role="alert">
+        <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-danger{% else %}alert-secondary{% endif %} py-2 mb-2">
           {{ message }}
         </div>
       {% endfor %}
     </div>
   {% endif %}
 
-  {# タブ（segmented） #}
-  <div class="segmented mb-4" role="tablist" aria-label="購入管理タブ">
-    <a
-      class="seg-btn {% if active_tab != 'received' %}active{% endif %}"
-      href="{% url 'frontend:purchases' %}?tab=mine"
-      role="tab"
-      aria-selected="{% if active_tab != 'received' %}true{% else %}false{% endif %}"
-    >
-      私の購入 ({{ mine_count|default:mine|length }})
+  <div class="segmented mb-4">
+    <a class="seg-btn {% if active_tab != 'received' %}active{% endif %}"
+       href="{% url 'frontend:purchases' %}?tab=mine">
+      私の購入 ({{ mine|length }})
     </a>
-    <a
-      class="seg-btn {% if active_tab == 'received' %}active{% endif %}"
-      href="{% url 'frontend:purchases' %}?tab=received"
-      role="tab"
-      aria-selected="{% if active_tab == 'received' %}true{% else %}false{% endif %}"
-    >
-      受け取った注文 ({{ received_count|default:received|length }})
+    <a class="seg-btn {% if active_tab == 'received' %}active{% endif %}"
+       href="{% url 'frontend:purchases' %}?tab=received">
+      受け取った注文 ({{ received|length }})
     </a>
   </div>
 
-  {# 本文 #}
   {% if active_tab == 'received' %}
     {% with items=received mode="received" %}
       {% include "frontend/purchases/_list.html" %}
@@ -54,6 +44,5 @@
       {% include "frontend/purchases/_list.html" %}
     {% endwith %}
   {% endif %}
-
 </div>
 {% endblock %}

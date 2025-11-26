@@ -1,8 +1,8 @@
 {# 共通リスト: items と mode('mine' or 'received') を受け取る #}
 {% if items %}
   <div class="vstack gap-3">
-    {% for p in items %}
-      {% include "frontend/purchases/_purchase_card.html" with order=p mode=mode %}
+    {% for order in items %}
+      {% include "frontend/purchases/_purchase_card.html" with order=order mode=mode %}
     {% endfor %}
   </div>
 {% else %}

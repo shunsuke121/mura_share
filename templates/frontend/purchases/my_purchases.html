@@ -1,19 +1,42 @@
 {% extends "base.html" %}
+<<<<<<< HEAD
 {% block title %}購入管理 - 私の購入{% endblock %}
 
 {% block content %}
 <div class="container-xxl py-4">
+=======
+{% block title %}私の購入 - MURAシェア{% endblock %}
+
+{% block content %}
+<div class="container-xxl py-4 purchases">
+>>>>>>> cb624c1 (変更要約)
   <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
       <h2 class="fw-bold mb-1">私の購入</h2>
       <div class="text-muted">あなたが購入した注文の一覧</div>
     </div>
+<<<<<<< HEAD
     <div class="btn-group">
       <a href="{% url 'frontend:my_purchases' %}" class="btn btn-dark">私の購入</a>
       <a href="{% url 'frontend:received_purchases' %}" class="btn btn-outline-dark">受け取った注文</a>
     </div>
   </div>
 
+=======
+    <a href="{% url 'frontend:purchases' %}" class="btn btn-outline-secondary">一覧タブに戻る</a>
+  </div>
+
+  {% if messages %}
+    <div class="mb-3">
+      {% for message in messages %}
+        <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-danger{% else %}alert-secondary{% endif %} py-2 mb-2">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+>>>>>>> cb624c1 (変更要約)
   {% with items=my_purchases mode="mine" %}
     {% include "frontend/purchases/_list.html" %}
   {% endwith %}
