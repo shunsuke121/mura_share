@@ -13,14 +13,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import EmailMessage
 from django.conf import settings
 from .models import ContactInquiry
-<<<<<<< HEAD
+from django.db import transaction
 import re
  
-=======
-from django.db import transaction
-import requests
-
->>>>>>> cb624c1 (変更要約)
 from accounts.models import Profile
 from marketplace.models import Product, ProductImage, RentalApplication, Rental, Purchase
  
@@ -522,7 +517,6 @@ def _handle_purchase_action(request, redirect_name):
 
     return redirect(redirect_name)
 
-
  
  
 @login_required
@@ -734,11 +728,7 @@ def product_create_done(request):
  
 @login_required
 def rental_apply(request, pk):
-<<<<<<< HEAD
-    """右側フォームからの申請作成（レンタル/購入の分岐込み）"""
-=======
     """商品詳細の右カラムから レンタル/購入 を申請する"""
->>>>>>> cb624c1 (変更要約)
     product = get_object_or_404(Product, pk=pk)
 
     # 自分の出品には申請不可
@@ -746,15 +736,6 @@ def rental_apply(request, pk):
         messages.error(request, "自分が出品した商品には申請できません。")
         return redirect("frontend:product_detail", pk=pk)
 
-<<<<<<< HEAD
-    order_type = request.POST.get("order_type")  # 'rental' or 'purchase'
-    quantity = int(request.POST.get("quantity") or 1)
-
-    postal_code = request.POST.get("postal_code", "")
-    address = request.POST.get("address", "")
-    payment_method = request.POST.get("payment_method")
-    message_txt = request.POST.get("message", "")
-=======
     # 入力値
     order_type = (request.POST.get("order_type") or "").strip()  # 'rental' | 'purchase'
     quantity = int(request.POST.get("quantity") or 1)
@@ -763,7 +744,6 @@ def rental_apply(request, pk):
     address = (request.POST.get("address") or "").strip()
     payment_method = (request.POST.get("payment_method") or "").strip()
     message_txt = (request.POST.get("message") or "").strip()
->>>>>>> cb624c1 (変更要約)
 
     start_date = request.POST.get("start_date") or None
     end_date   = request.POST.get("end_date") or None
@@ -780,15 +760,11 @@ def rental_apply(request, pk):
     if not payment_method:
         errors.append("決済方法を選択してください。")
 
-<<<<<<< HEAD
-    # --- 購入申請 ---
-=======
     # order_type 妥当性
     if order_type not in ("rental", "purchase"):
         errors.append("不正な注文種別です。ページを更新してやり直してください。")
 
     # ここで購入フロー
->>>>>>> cb624c1 (変更要約)
     if order_type == "purchase":
         if not allow_purchase:
             messages.error(request, "この商品は購入できません。")
@@ -799,49 +775,6 @@ def rental_apply(request, pk):
                 messages.error(request, e)
             return redirect("frontend:product_detail", pk=pk)
 
-<<<<<<< HEAD
-        # Purchase モデルに実在するフィールドだけ詰める
-        fields = {f.name for f in Purchase._meta.get_fields()}
-        kwargs = {
-            "product": product,
-            "buyer": request.user,
-            "quantity": quantity,
-        }
-
-        Status = getattr(Purchase, "Status", None)
-        requested_value = getattr(Status, "REQUESTED", None)
-        if "status" in fields:
-            kwargs["status"] = requested_value or "申請中"
-
-        # 住所系の差異を吸収
-        if "postal_code" in fields:
-            kwargs["postal_code"] = postal_code
-        elif "shipping_postal_code" in fields:
-            kwargs["shipping_postal_code"] = postal_code
-
-        if "address" in fields:
-            kwargs["address"] = address
-        elif "shipping_address" in fields:
-            kwargs["shipping_address"] = address
-
-        if "payment_method" in fields:
-            kwargs["payment_method"] = payment_method
-        if "message" in fields:
-            kwargs["message"] = message_txt
-
-        # 金額系（存在すれば）
-        if getattr(product, "price_buy", None) is not None:
-            if "unit_price" in fields:
-                kwargs["unit_price"] = product.price_buy
-            if "total_price" in fields:
-                kwargs["total_price"] = (product.price_buy or 0) * quantity
-
-        Purchase.objects.create(**kwargs)
-        messages.success(request, "購入申請を送信しました。")
-        return redirect("frontend:purchases")
-
-    # --- レンタル申請 ---
-=======
         # 初期ステータスはモデルに合わせて決定（PENDINGが無ければREQUESTED）
         try:
             initial_status = Purchase.Status.PENDING
@@ -874,16 +807,12 @@ def rental_apply(request, pk):
         return redirect("frontend:purchases")
 
     # ここからレンタルフロー
->>>>>>> cb624c1 (変更要約)
     if order_type == "rental":
         if not allow_rental:
             messages.error(request, "この商品はレンタルできません。")
             return redirect("frontend:product_detail", pk=pk)
 
-<<<<<<< HEAD
-=======
         from django.utils.dateparse import parse_date
->>>>>>> cb624c1 (変更要約)
         sd = parse_date(start_date) if start_date else None
         ed = parse_date(end_date) if end_date else None
         if not sd or not ed:
@@ -898,13 +827,8 @@ def rental_apply(request, pk):
 
         RentalApplication.objects.create(
             product=product,
-<<<<<<< HEAD
-            owner=product.owner,
-            renter=request.user,
-=======
             owner=product.owner,      # 受け取り側
             renter=request.user,      # 申請者
->>>>>>> cb624c1 (変更要約)
             order_type=order_type,
             quantity=quantity,
             start_date=sd,
@@ -916,14 +840,12 @@ def rental_apply(request, pk):
         )
         messages.success(request, "申請を送信しました。オーナーの承認をお待ちください。")
         return redirect("frontend:product_detail", pk=pk)
-<<<<<<< HEAD
-=======
 
     # ここまでで return されていない場合の最終退避
     messages.error(request, "不正なリクエストです。")
     return redirect("frontend:product_detail", pk=pk)
 
->>>>>>> cb624c1 (変更要約)
+
  
  
 @login_required
