@@ -260,8 +260,9 @@ class Review(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 # --- RentalApplication（申請）モデル ここから追記 -------------------------
-# --- RentalApplication（申請）モデル ここから追記 -------------------------
+
 class RentalApplication(models.Model):
+    tracking_number = models.CharField(max_length=100, blank=True, default="")
     class OrderType(models.TextChoices):
         RENTAL = 'rental', 'レンタル'
         PURCHASE = 'purchase', '購入'
