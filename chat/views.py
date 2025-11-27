@@ -4,6 +4,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import DetailView
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
+from django.db import models
 
 # Create your views here.
 from marketplace.models import Product
@@ -89,7 +91,7 @@ class ChatDetailView(LoginRequiredMixin, View):
         messages = room.messages.order_by("created_at")
         room.messages.filter(is_read=False).exclude(user=request.user).update(is_read=True)
 
-        return render(request, "messages/messages_detail.html", {
+        return render(request, "frontend/messages/messages_detail.html", {
             "room": room,
             "messages": messages
         })
@@ -107,26 +109,17 @@ class ChatDetailView(LoginRequiredMixin, View):
 
         return redirect("chat:chat_detail", room_id=room_id)
 
+@login_required
+def send_message(request, room_id):
+    room = get_object_or_404(ChatRoom, id=room_id)
 
-class ChatDetailView(DetailView):
-    model = ChatRoom
-    template_name = "frontend/messages/messages_detail.html"   # ← ここ！
-    context_object_name = "room"
-    pk_url_kwarg = "room_id"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["messages"] = ChatMessage.objects.filter(room=self.object).select_related("user")
-        return context
-    
-class SendMessageView(View):
-    def post(self, request, room_id):
+    if request.method == "POST":
         body = request.POST.get("body")
+        if body:
+            ChatMessage.objects.create(
+                room=room,
+                user=request.user,
+                body=body
+            )
 
-        # ログインセッションでAPI呼び出す
-        url = f"{settings.BASE_URL}/api/v1/rooms/{room_id}/messages/"
-        cookies = request.COOKIES  # Djangoセッションを渡す
-
-        requests.post(url, data={"body": body}, cookies=cookies)
-
-        return redirect("chat:chat_detail", room_id=room_id)
+    return redirect("chat:chat_detail", room_id=room.id)

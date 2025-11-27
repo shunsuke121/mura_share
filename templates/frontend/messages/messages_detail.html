@@ -6,19 +6,20 @@
     <h3>{{ room.product.title }} のチャット</h3>
     <hr>
     <div class="messages-box mb-3" style="height: 400px; overflow-y: scroll;">
-        {% for msg in messages %}
-        <div class="mb-2 {% if msg.user == request.user %}text-end{% endif %}">
+    {% for msg in messages %}
+        <div class="mb-2 {% if msg.user.id == request.user.id %}text-end{% endif %}">
             <div class="p-2 d-inline-block border rounded">
                 <strong>{{ msg.user.username }}</strong><br>
                 {{ msg.body }}
-                <div class="text-muted" style="font-size: 12px;">
-                    {{ msg.created_at|date:"n/j H:i" }}
-                </div>
+            <div class="text-muted" style="font-size: 12px;">
+                {{ msg.created_at|date:"n/j H:i" }}
             </div>
         </div>
-        {% endfor %}
     </div>
-    <form method="POST" action="/api/v1/rooms/{{ room.id }}/messages/">
+    {% endfor %}
+    </div>
+
+    <form method="POST" action="{% url 'chat:send_message' room.id %}">
         {% csrf_token %}
         <div class="input-group">
             <input type="text" name="body" class="form-control" placeholder="メッセージを入力..." required>
