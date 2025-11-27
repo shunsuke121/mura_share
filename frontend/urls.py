@@ -21,8 +21,6 @@ urlpatterns = [
     path("purchases/", views.purchases_index, name="purchases"),
     path("purchases/my/", views.my_purchases, name="my_purchases"),
     path("purchases/received/", views.received_purchases, name="received_purchases"),
-
-    path("rentals/my/",       views.my_rentals,       name="my_rentals"),
     path("rentals/received/", views.received_rentals, name="received_rentals"),
     path("rentals/", views.rentals_index, name="rentals"),
     
@@ -44,6 +42,9 @@ urlpatterns = [
     # 申請関連（★ views. を必ず付ける）
     path("products/<int:pk>/apply/", views.rental_apply, name="rental_apply"),
     path("rentals/manage/", views.rental_manage, name="rental_manage"),
+    path("rentals/applications/<int:app_id>/approve/", views.rental_app_approve, name="rental_app_approve"),
+    path("rentals/applications/<int:app_id>/reject/", views.rental_app_reject, name="rental_app_reject"),
+     path("rentals/applications/<int:app_id>/ship/",    views.rental_app_ship,    name="rental_app_ship"),
 
     # オーナーマイページ（投稿商品一覧）
     path("mypage/products/", views.my_products, name="my_products"),
@@ -51,4 +52,16 @@ urlpatterns = [
     # お問い合わせ
     path("contact/", views.contact_page, name="contact"),
     path("api/contact/", views.contact_api, name="contact_api"),
+    path("rentals/my/", views.my_applications, name="my_applications"),
+
+    # ▼ 追加（私の申請をキャンセル）
+    path("rentals/applications/<int:app_id>/cancel/", views.rental_app_cancel, name="rental_app_cancel"),
+    # 借り手側のアクション
+path("rentals/app/<int:app_id>/receive/",      views.rental_app_receive,      name="rental_app_receive"),
+path("rentals/app/<int:app_id>/return_ship/",  views.rental_app_return_ship,  name="rental_app_return_ship"),
+path(
+    "rentals/app/<int:app_id>/confirm_return/",
+    views.rental_app_confirm_return,
+    name="rental_app_confirm_return",
+),
 ]

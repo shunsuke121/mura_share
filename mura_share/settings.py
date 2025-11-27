@@ -31,7 +31,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "frontend",
-
+    'django.contrib.humanize',
     # 追加（API/認証/スキーマ/CORS/フィルタ）
     "rest_framework",
     "django_filters",

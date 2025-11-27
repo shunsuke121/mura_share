@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}購入管理 - 受け取った申請{% endblock %}
+{% block content %}
+<div class="container-xxl py-4">
+  <h2 class="fw-bold mb-1">購入管理</h2>
+  <div class="text-muted mb-3">あなたの購入申請と受け取った申請を管理</div>
+  {% for a in applications %}
+    <div class="card border-0 shadow-sm mb-3"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+          <div class="h5 mb-1">{{ a.product.title }}</div>
+          <div class="d-flex gap-2 flex-wrap">
+            <span class="badge bg-light text-dark">{{ a.get_order_type_display }}</span>
+            <span class="badge bg-light text-dark">{{ a.get_payment_method_display }}</span>
+            <span class="badge bg-light text-dark">{{ a.quantity }}点</span>
+          </div>
+        </div>
+        <div class="text-end">
+          {% if a.calc_price %}<div class="fw-bold fs-5">¥{{ a.calc_price }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="bg-light rounded-2 p-3 mb-2">
+        <div class="text-muted small">配送先住所</div>
+        <div>{{ a.postal_code }} {{ a.address }}</div>
+      </div>
+      <div class="mb-2"><div class="text-muted small">購入者:</div><div>{{ a.renter.email|default:a.renter.username }}</div></div>
+      <div class="text-muted small">申請日: {{ a.created_at|date:"Y年n月j日 H:i" }}</div>
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <a class="text-decoration-none" href="{% url 'frontend:product_detail' a.product_id %}">👁 詳細を見る</a>
+        {% if a.status == 'pending' %}
+          <div class="d-flex gap-2">
+            <form method="post" action="{% url 'frontend:rental_app_approve' a.id %}">{% csrf_token %}<button class="btn btn-success">承認する</button></form>
+            <form method="post" action="{% url 'frontend:rental_app_reject' a.id %}">{% csrf_token %}<button class="btn btn-outline-danger">却下する</button></form>
+          </div>
+        {% else %}
+          <div class="text-muted small">この申請は<strong>{{ a.get_status_display }}</strong>になっています。</div>
+        {% endif %}
+      </div>
+    </div></div>
+  {% empty %}
+    <div class="text-center text-muted py-5">受け取った申請はまだありません。</div>
+  {% endfor %}
+</div>
+{% endblock %}

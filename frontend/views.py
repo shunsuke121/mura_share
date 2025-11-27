@@ -909,12 +909,26 @@ def rental_apply(request, pk):
  
 @login_required
 def rental_manage(request):
-    """オーナーが受け取った申請一覧（簡易）"""
-    apps = RentalApplication.objects.filter(owner=request.user).order_by("-id")
-    return render(request, "frontend/rentals/manage.html", {"applications": apps})
- 
- 
-@login_required
+    """出品者が受け取った申請一覧（レンタル/購入とも）"""
+    apps = list(RentalApplication.objects.filter(owner=request.user).select_related("product","renter").order_by("-created_at"))
+    for a in apps:
+        a.calc_days = None
+        a.calc_price = None
+        if a.order_type == RentalApplication.OrderType.RENTAL and a.start_date and a.end_date:
+            a.calc_days = (a.end_date - a.start_date).days + 1
+            daily = getattr(a.product, "price_per_day", 0) or 0
+            a.calc_price = daily * (a.calc_days or 0) * (a.quantity or 1)
+        elif a.order_type == RentalApplication.OrderType.PURCHASE:
+            price_buy = getattr(a.product, "price_buy", 0) or 0
+            a.calc_price = price_buy * (a.quantity or 1)
+    ctx = {
+        "applications": apps,
+        "active_tab": "received",
+        "received_count": len(apps),
+        "mine_count": RentalApplication.objects.filter(renter=request.user).count(),
+    }
+    return render(request, "frontend/rentals/manage.html", ctx)
+
 def my_products(request):
     """オーナーの投稿商品一覧"""
     items = Product.objects.filter(owner=request.user).order_by("-id")
@@ -1185,6 +1199,51 @@ def contact_api(request):
 
     return JsonResponse({"ok": True})
 
+
+@login_required
+def purchase_manage(request):
+    """出品者が受け取った【購入】申請のみの一覧"""
+    apps = list(RentalApplication.objects.filter(
+        owner=request.user,
+        order_type=RentalApplication.OrderType.PURCHASE
+    ).select_related("product","renter").order_by("-created_at"))
+
+    for a in apps:
+        a.calc_days = None
+        price_buy = getattr(a.product, "price_buy", 0) or 0
+        a.calc_price = price_buy * (a.quantity or 1)
+
+    return render(request, "frontend/purchases/applications.html", {
+        "applications": apps,
+        "active_tab": "received",
+        "received_count": len(apps),
+        "mine_count": RentalApplication.objects.filter(renter=request.user, order_type=RentalApplication.OrderType.PURCHASE).count(),
+    })
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from marketplace.models import RentalApplication
+
+@login_required
+def rental_app_approve(request, app_id):
+    """申請を承認（出品者のみ）"""
+    app = get_object_or_404(RentalApplication, id=app_id, owner=request.user)
+    if request.method == "POST":
+        app.status = RentalApplication.Status.APPROVED
+        app.save()
+        messages.success(request, "申請を承認しました。")
+    return redirect("frontend:rental_manage")
+
+@login_required
+def rental_app_reject(request, app_id):
+    """申請を却下（出品者のみ）"""
+    app = get_object_or_404(RentalApplication, id=app_id, owner=request.user)
+    if request.method == "POST":
+        app.status = RentalApplication.Status.REJECTED
+        app.save()
+        messages.info(request, "申請を却下しました。")
+    return redirect("frontend:rental_manage")
+
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import render
 
@@ -1203,3 +1262,240 @@ class AdminShippingView(AdminRequiredMixin, TemplateView):
 # 追加: 403 ハンドラ
 def error_403(request, exception=None):
     return render(request, "403.html", status=403)
+
+from django.views.decorators.http import require_POST
+
+@login_required
+def my_applications(request):
+    """
+    借り手（自分）が送ったレンタル/購入の申請一覧を表示
+    スクショのようなカードUIで表示します。
+    """
+    apps = (RentalApplication.objects
+            .filter(renter=request.user)
+            .select_related("product", "owner")
+            .order_by("-created_at"))
+
+    # 表示用計算・ラベル付け
+    STATUS_LABELS = {
+        "PENDING": "申請中",
+        "APPROVED": "承認済み",
+        "SHIPPED": "発送済み",
+        "RECEIVED": "受取済み",
+        "RENTING": "レンタル中",
+        "RETURN_SHIPPED": "返却発送済み",
+        "COMPLETED": "完了",
+        "REJECTED": "却下",
+        "CANCELLED": "キャンセル",
+    }
+    BADGE_CLASS = {
+        "PENDING": "secondary",
+        "APPROVED": "primary",
+        "SHIPPED": "info",
+        "RECEIVED": "success",
+        "RENTING": "success",
+        "RETURN_SHIPPED": "dark",
+        "COMPLETED": "secondary",
+        "REJECTED": "danger",
+        "CANCELLED": "dark",
+    }
+
+    for a in apps:
+        # 日数・金額
+        a.calc_days = None
+        a.calc_price = None
+        qty = (getattr(a, "quantity", 1) or 1)
+        try:
+            if a.order_type == RentalApplication.OrderType.RENTAL and a.start_date and a.end_date:
+                a.calc_days = (a.end_date - a.start_date).days + 1
+                daily = getattr(a.product, "price_per_day", 0) or 0
+                a.calc_price = daily * (a.calc_days or 0) * qty
+            elif a.order_type == RentalApplication.OrderType.PURCHASE:
+                price_buy = getattr(a.product, "price_buy", 0) or 0
+                a.calc_price = price_buy * qty
+        except Exception:
+            pass
+
+        # ステータス表示
+        s = str(getattr(a, "status", "")).upper()
+        a.status_code = s
+        a.status_label = STATUS_LABELS.get(s, s)
+        a.badge_class = BADGE_CLASS.get(s, "secondary")
+
+    ctx = {
+        "applications": apps,
+        "active_tab": "mine",
+        "mine_count": apps.count(),
+        "received_count": RentalApplication.objects.filter(owner=request.user).count(),
+    }
+    return render(request, "frontend/rentals/my_applications.html", ctx)
+
+
+@login_required
+@require_POST
+def rental_app_cancel(request, app_id):
+    """借り手が自分の申請をキャンセル"""
+    app = get_object_or_404(RentalApplication, id=app_id, renter=request.user)
+
+    status_now = str(getattr(app, "status", "")).upper()
+    if status_now in ("PENDING", "APPROVED"):
+        # 申請中/承認済みのみキャンセル可（運用に合わせて調整可）
+        try:
+            app.status = RentalApplication.Status.CANCELLED
+        except Exception:
+            app.status = "CANCELLED"
+        app.save(update_fields=["status"])
+        messages.info(request, "申請をキャンセルしました。")
+    else:
+        messages.warning(request, "この申請はキャンセルできません。")
+
+    return redirect("frontend:my_applications")
+
+from django.views.decorators.http import require_POST
+from django.utils import timezone
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from marketplace.models import RentalApplication
+
+@login_required
+@require_POST
+def rental_app_ship(request, app_id):
+    """承認後に追跡番号を入力して発送へ"""
+    app = get_object_or_404(RentalApplication, id=app_id, owner=request.user)
+
+    if app.status != RentalApplication.Status.APPROVED:
+        messages.error(request, "承認済みの申請のみ配送できます。")
+        return redirect("frontend:rental_manage")
+
+    tracking = (request.POST.get("tracking_number") or "").strip()
+    if not tracking:
+        messages.error(request, "追跡番号を入力してください。")
+        return redirect("frontend:rental_manage")
+
+    app.tracking_number = tracking
+    app.status = RentalApplication.Status.SHIPPED
+    # 発送日時を持っていないモデルなので省略（持っていればセット）
+    app.save()
+
+    messages.success(request, "商品を配送しました。相手の受取をお待ちください。")
+    return redirect("frontend:rental_manage")
+
+@login_required
+@require_POST
+def rental_app_receive(request, app_id):
+    """
+    借り手側：出品者が発送済み(shipped)の申請に対して「レンタル開始」ボタン。
+    status: shipped → renting
+    """
+    app = get_object_or_404(RentalApplication, id=app_id, renter=request.user)
+
+    if (app.status or "").lower() != "shipped":
+        messages.warning(request, "出品者が『発送済み』の申請のみレンタル開始できます。")
+        return redirect("frontend:my_applications")
+
+    app.status = "renting"
+    if hasattr(app, "rental_start_date"):
+        app.rental_start_date = timezone.now()
+    if hasattr(app, "received_date_by_renter"):
+        app.received_date_by_renter = timezone.now()
+    app.save()
+
+    # 通知（通知アプリがなければ何もしない）
+    try:
+        _create_notification(
+            getattr(app.owner, "email", ""),
+            "レンタル開始",
+            f"「{getattr(app.product, 'title', '商品')}」のレンタルが開始されました。",
+            app.id,
+            "frontend:rental_manage",
+            kind="rental",
+        )
+    except Exception:
+        pass
+
+    messages.success(request, "レンタルを開始しました。")
+    return redirect("frontend:my_applications")
+
+@login_required
+@require_POST
+def rental_app_return_ship(request, app_id):
+    """
+    借り手側：レンタル中(renting) などから返却発送。
+    status: renting/received → return_shipped
+    """
+    app = get_object_or_404(RentalApplication, id=app_id, renter=request.user)
+
+    tracking = (request.POST.get("return_tracking_number")
+                or request.POST.get("tracking_number") or "").strip()
+    if not tracking:
+        messages.error(request, "返却の追跡番号を入力してください。")
+        return redirect("frontend:my_applications")
+
+    # 追跡番号の保存先があれば使い、無ければ message に追記
+    if hasattr(app, "return_tracking_number"):
+        app.return_tracking_number = tracking
+    else:
+        app.message = ((app.message or "") + f"\n[返却追跡番号] {tracking}").strip()
+
+    app.status = "return_shipped"
+    if hasattr(app, "shipped_date_return"):
+        app.shipped_date_return = timezone.now()
+    app.save()
+
+    try:
+        _create_notification(
+            getattr(app.owner, "email", ""),
+            "返却発送のお知らせ",
+            f"「{getattr(app.product, 'title', '商品')}」が返却のため発送されました。",
+            app.id,
+            "frontend:rental_manage",
+            kind="rental",
+        )
+    except Exception:
+        pass
+
+    messages.success(request, "返却を発送しました。出品者の受領をお待ちください。")
+    return redirect("frontend:my_applications")
+
+@login_required
+@require_POST
+def rental_app_confirm_return(request, app_id):
+    """
+    出品者側：借り手が返却発送(return_shipped)にした申請を受領し、取引を完了にする。
+    status: return_shipped -> completed
+    """
+    app = get_object_or_404(RentalApplication, id=app_id, owner=request.user)
+
+    if (app.status or "").lower() != "return_shipped":
+        messages.warning(request, "返却発送済みの申請のみレンタル終了できます。")
+        return redirect("frontend:rental_manage")
+
+    app.status = "completed"
+    # フィールドがあれば完了日時もセット（無くてもOK）
+    if hasattr(app, "completed_date"):
+        app.completed_date = timezone.now()
+    app.save()
+
+    # 通知（通知アプリが無ければ何もしない）
+    try:
+        _create_notification(
+            getattr(app.renter, "email", ""),
+            "レンタル完了",
+            f"「{getattr(app.product, 'title', '商品')}」のレンタルが完了しました。",
+            app.id,
+            "frontend:my_applications",
+            kind="rental",
+        )
+        _create_notification(
+            getattr(app.owner, "email", ""),
+            "レンタル完了",
+            f"「{getattr(app.product, 'title', '商品')}」のレンタルが完了しました。",
+            app.id,
+            "frontend:rental_manage",
+            kind="rental",
+        )
+    except Exception:
+        pass
+
+    messages.success(request, "返却を受領し、レンタルを終了しました。")
+    return redirect("frontend:rental_manage")

@@ -28,8 +28,11 @@
       <span class="sidebar-text">商品を投稿</span>
     </a>
 
-    <a href="{% url 'frontend:rentals' %}"
-       class="sidebar-link {% if request.resolver_match.url_name == 'rentals' %}is-active{% endif %}">
+    <!-- レンタル管理 -->
+    <a
+      href="{% url 'frontend:rental_manage' %}"
+      class="sidebar-link {% if request.resolver_match.url_name == 'rentals' %}is-active{% endif %}"
+    >
       <span class="sidebar-icon bi bi-calendar-event"></span>
       <span class="sidebar-text">レンタル管理</span>
     </a>
@@ -67,11 +70,15 @@
       <span class="sidebar-text">プロフィール</span>
     </a>
 
-    <a href="{% url 'frontend:contact' %}"
-       class="sidebar-link {% if request.resolver_match.url_name == 'contact' %}is-active{% endif %}">
+        <!-- お問い合わせ -->
+    <a
+      href="{% url 'frontend:contact' %}"
+      class="sidebar-link {% if request.resolver_match.url_name == 'contact' %}is-active{% endif %}"
+    >
       <span class="sidebar-icon bi bi-envelope"></span>
       <span class="sidebar-text">お問い合わせ</span>
     </a>
+
 
   </div>
 

@@ -260,16 +260,21 @@ class Review(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 # --- RentalApplication（申請）モデル ここから追記 -------------------------
+# --- RentalApplication（申請）モデル ここから追記 -------------------------
 class RentalApplication(models.Model):
     class OrderType(models.TextChoices):
         RENTAL = 'rental', 'レンタル'
         PURCHASE = 'purchase', '購入'
 
     class Status(models.TextChoices):
-        PENDING   = 'pending',   '申請中'
-        APPROVED  = 'approved',  '承認'
-        REJECTED  = 'rejected',  '却下'
-        CANCELLED = 'cancelled', 'キャンセル'
+        PENDING         = 'pending',        '申請中'
+        APPROVED        = 'approved',       '承認済み'      # ← 表示名はお好みで
+        SHIPPED         = 'shipped',        '発送済み'      # ← 追加
+        RECEIVED        = 'received',       '受取完了'      # ← 将来用（借り手確認）
+        RETURN_SHIPPED  = 'return_shipped', '返却発送済み'  # ← 将来用（借り手返送）
+        COMPLETED       = 'completed',      '完了'          # ← 将来用（出品者確認）
+        REJECTED        = 'rejected',       '却下'
+        CANCELLED       = 'cancelled',      'キャンセル'
 
     product = models.ForeignKey('marketplace.Product',
                                 on_delete=models.CASCADE,
@@ -298,9 +303,14 @@ class RentalApplication(models.Model):
         ('bank',        '銀行振込'),
     ]
     payment_method = models.CharField(max_length=20, choices=PAYMENT_CHOICES)
+
+    # 申請時に入力された「メッセージ」
     message        = models.TextField(blank=True)
 
-    status     = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    # ★ 承認後に入力する「追跡番号」
+    tracking_number = models.CharField(max_length=50, blank=True, default="")
+
+    status     = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -308,5 +318,7 @@ class RentalApplication(models.Model):
 
     def __str__(self):
         return f'{self.get_order_type_display()}申請: product={self.product_id}, by={self.renter_id}'
+# --- 追記ここまで ----------------------------------------------------------
+
 # --- 追記ここまで ----------------------------------------------------------
 
