@@ -11,6 +11,10 @@ urlpatterns = [
     path("products/", views.ProductListView.as_view(), name="products"),
     path("products/new/", views.product_create, name="product_new"),
     path("products/<int:pk>/", views.ProductDetailView.as_view(), name="product_detail"),
+    # frontend/urls.py
+    path('products/<int:pk>/favorite/toggle/', views.product_favorite_toggle, name='product_favorite_toggle'),
+
+
     path("", RedirectView.as_view(pattern_name="frontend:products", permanent=False)),
 
     # サイドバーで参照している名前をすべて定義
@@ -27,7 +31,8 @@ urlpatterns = [
 
 
     path("messages/",  views.MessagesPage.as_view(),     name="messages"),
-    path("profile/",   profile_view,                     name="profile"),
+    path("profile/", views.profile, name="profile"),
+
     path("docs/",      views.DocumentationView.as_view(),name="docs"),
     path("admin/shipping/", views.AdminShippingView.as_view(), name="admin_shipping"),
 

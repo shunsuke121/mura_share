@@ -8,7 +8,6 @@ User = settings.AUTH_USER_MODEL
 
 
 class Product(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.title
@@ -68,6 +67,21 @@ class Product(models.Model):
 
     def __str__(self):
         return self.title
+    
+
+class ProductFavorite(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="product_favorites")
+    product = models.ForeignKey("marketplace.Product", on_delete=models.CASCADE, related_name="favorites")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "product")
+        indexes = [models.Index(fields=["user", "product"])]
+
+    def __str__(self):
+        return f"{self.user_id} ♥ {self.product_id}"
+
+
 
 
 class ProductImage(models.Model):

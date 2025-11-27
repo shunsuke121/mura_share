@@ -14,10 +14,13 @@ from django.core.mail import EmailMessage
 from django.conf import settings
 from .models import ContactInquiry
 from django.db import transaction
+from django.db.models.functions import Coalesce
+from django.http import JsonResponse, Http404
+from django.views.decorators.http import require_POST
 import re
  
 from accounts.models import Profile
-from marketplace.models import Product, ProductImage, RentalApplication, Rental, Purchase
+from marketplace.models import Product, ProductImage, RentalApplication, Rental, Purchase, ProductFavorite
  
 # 通知アプリが無い環境でも落ちないように
 try:
@@ -34,6 +37,8 @@ CATEGORIES = [
 ]
 
 
+from django.db.models import Exists, OuterRef, Value, BooleanField, Q
+
 class ProductListView(ListView):
     model = Product
     template_name = "frontend/products/index.html"
@@ -41,13 +46,75 @@ class ProductListView(ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        return Product.objects.filter(status=Product.Status.LISTED).order_by("-id")
+        qs = Product.objects.filter(status=Product.Status.LISTED)
+
+        # クエリ取得
+        r = self.request.GET
+        q   = (r.get("q") or "").strip()
+        cat = (r.get("category") or "all").strip()
+        av  = (r.get("availability") or "all").strip()
+        sort= (r.get("sort") or "newest").strip()
+
+        # テンプレ用に保持（崩さず最小変更）
+        self.selected = {"q": q, "category": cat, "availability": av, "sort": sort}
+
+        # 検索
+        if q:
+            qs = qs.filter(Q(title__icontains=q) | Q(description__icontains=q))
+
+        # カテゴリ
+        if cat and cat != "all":
+            qs = qs.filter(category=cat)
+
+        # 提供タイプ
+        if av and av != "all":
+            qs = qs.filter(availability_type=av)
+
+        # ソート
+        if sort == "price_low":
+            qs = qs.order_by("price_buy", "-id")
+        elif sort == "price_high":
+            qs = qs.order_by("-price_buy", "-id")
+        else:
+            qs = qs.order_by("-id")
+
+        # お気に入り注釈
+        u = self.request.user
+        if u.is_authenticated:
+            fav_exists = ProductFavorite.objects.filter(user=u, product_id=OuterRef("pk"))
+            qs = qs.annotate(is_favorited=Exists(fav_exists))
+        else:
+            qs = qs.annotate(is_favorited=Value(False, output_field=BooleanField()))
+
+        return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["categories"] = CATEGORIES
+        ctx["selected"] = getattr(self, "selected", {
+            "q": "", "category": "all", "availability": "all", "sort": "newest",
+        })
+
+        # 既存ロジックは温存
+        fav_ids = set()
+        u = self.request.user
+        if u.is_authenticated:
+            fav_ids = set(
+                ProductFavorite.objects
+                .filter(user=u)
+                .values_list("product_id", flat=True)
+            )
+
+        products = ctx.get("products") or []
+        for p in products:
+            p.is_favorited = (p.id in fav_ids)
+
         return ctx
- 
+
+
+
+    
+
  
 class ProductDetailView(DetailView):
     model = Product
@@ -74,7 +141,17 @@ class ProductDetailView(DetailView):
  
         return ctx
  
- 
+# =========== お気に入り ============
+@login_required
+@require_POST
+def product_favorite_toggle(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    fav, created = ProductFavorite.objects.get_or_create(user=request.user, product=product)
+    if created:
+        return JsonResponse({"ok": True, "favorited": True})
+    # 既にあれば削除して解除
+    fav.delete()
+    return JsonResponse({"ok": True, "favorited": False})
 class PurchaseListView(TemplateView):
     template_name = "frontend/purchases/index.html"
  
@@ -564,24 +641,6 @@ def received_purchases(request):
     return render(request, "frontend/purchases/received_purchases.html",
                   {"received_purchases": items, "items": items, "mode": "received"})
  
- 
-@login_required
-def received_purchases(request):
-    """
-    テンプレ: templates/frontend/purchases/received_purchases.html
-    POST アクションもここで受ける（発送など）
-    """
-    if request.method == "POST":
-        return _handle_purchase_action(request, redirect_name="frontend:received_purchases")
- 
-    items = (Purchase.objects
-             .select_related("product", "buyer", "product__owner")
-             .filter(product__owner=request.user)
-             .order_by("-id"))
- 
-    return render(request, "frontend/purchases/received_purchases.html", {"received_purchases": items})
- 
- 
 # ========= 商品投稿 =========
  
 @login_required
@@ -1004,7 +1063,45 @@ def return_action(request):
 
     return redirect("frontend:returns")
  
- 
+@login_required
+def profile(request):
+    user = request.user
+    profile, _ = Profile.objects.get_or_create(user=user, defaults={"is_admin": False})
+
+    active_tab = request.GET.get("tab", "info")
+    editing = request.GET.get("edit") == "1"
+
+    if request.method == "POST":
+        profile.display_name = (request.POST.get("display_name") or "").strip()
+        profile.phone        = (request.POST.get("phone") or "").strip()
+        profile.address      = (request.POST.get("address") or "").strip()
+        if "profile_image" in request.FILES:
+            profile.profile_image = request.FILES["profile_image"]
+        profile.save()
+        messages.success(request, "プロフィールを更新しました。")
+        return redirect(f"{reverse('frontend:profile')}?tab=info")
+
+    my_products = []
+    favorites = []
+    if active_tab == "posts":
+        my_products = Product.objects.filter(owner=user).order_by("-id")
+    elif active_tab == "favorites":
+        favorites = (ProductFavorite.objects
+                     .filter(user=user)
+                     .select_related("product")
+                     .order_by("-created_at"))
+
+    ctx = {
+        "user_obj": user,
+        "profile": profile,
+        "active_tab": active_tab,
+        "editing": editing,
+        "my_products": my_products,
+        "favorites": favorites,          # ← テンプレに合わせる
+        "renting_products": [],
+        "transactions": [],
+    }
+    return render(request, "frontend/profile/index.html", ctx)
 # ========= 会員登録 =========
  
 def signup(request):

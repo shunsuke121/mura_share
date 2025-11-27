@@ -2,6 +2,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from marketplace.models import ProductFavorite
 from django.contrib import messages
 
 from rest_framework import generics, permissions, response, views
@@ -57,6 +58,7 @@ def profile_view(request):
     active_tab = request.GET.get("tab", "info")
     editing = request.GET.get("edit") == "1"
 
+    # プロフィール更新処理（POST）
     if request.method == "POST":
         display_name = request.POST.get("display_name", "").strip()
         phone = request.POST.get("phone", "").strip()
@@ -76,30 +78,39 @@ def profile_view(request):
         profile.save()
 
         if not original_address and address:
-            messages.success(request, "住所を登録しました。これで商品の投稿・レンタル・購入が可能になりました。")
+            messages.success(
+                request,
+                "住所を登録しました。これで商品の投稿・レンタル・購入が可能になりました。"
+            )
         else:
             messages.success(request, "プロフィールを更新しました。")
 
         return redirect("frontend:profile")
 
+    # 自分の商品一覧
     my_products = Product.objects.filter(owner=user)
 
-    favorite_products = Product.objects.none()
-    fav_ids = getattr(user, "favorite_products", None)
-    if fav_ids:
-        favorite_products = Product.objects.filter(id__in=fav_ids)
+    # お気に入り一覧
+    favorites = (
+        ProductFavorite.objects
+        .filter(user=user)
+        .select_related("product", "product__owner")
+        .order_by("-created_at")
+    )
 
+    # とりあえず空で置いてるならこれでOK
     renting_products = []
     transactions = []
 
     context = {
         "user_obj": user,
-        "profile": profile,  # ← これをテンプレで使う
+        "profile": profile,          # テンプレ側でプロフィール情報使う用
         "active_tab": active_tab,
         "editing": editing,
         "my_products": my_products,
-        "favorite_products": favorite_products,
+        "favorites": favorites,      # プロフィールの「お気に入りタブ」で使う
         "renting_products": renting_products,
         "transactions": transactions,
     }
+
     return render(request, "frontend/profile/index.html", context)
