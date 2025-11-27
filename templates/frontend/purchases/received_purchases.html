@@ -1,18 +1,25 @@
 {% extends "base.html" %}
-{% block title %}購入管理 - 受け取った注文{% endblock %}
+{% block title %}受け取った注文 - MURAシェア{% endblock %}
 
 {% block content %}
-<div class="container-xxl py-4">
+<div class="container-xxl py-4 purchases">
   <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
       <h2 class="fw-bold mb-1">受け取った注文</h2>
-      <div class="text-muted">あなたの出品に入った注文の一覧</div>
+      <div class="text-muted">あなたの出品に届いた購入リクエスト</div>
     </div>
-    <div class="btn-group">
-      <a href="{% url 'frontend:my_purchases' %}" class="btn btn-outline-dark">私の購入</a>
-      <a href="{% url 'frontend:received_purchases' %}" class="btn btn-dark">受け取った注文</a>
-    </div>
+    <a href="{% url 'frontend:purchases' %}" class="btn btn-outline-secondary">一覧タブに戻る</a>
   </div>
+
+  {% if messages %}
+    <div class="mb-3">
+      {% for message in messages %}
+        <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-danger{% else %}alert-secondary{% endif %} py-2 mb-2">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
 
   {% with items=received_purchases mode="received" %}
     {% include "frontend/purchases/_list.html" %}

@@ -2,6 +2,7 @@
 
 from django.conf import settings
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 User = settings.AUTH_USER_MODEL
 
@@ -160,6 +161,7 @@ class Rental(models.Model):
 class Purchase(models.Model):
     class Status(models.TextChoices):
         REQUESTED  = "申請中",  "申請中"
+        APPROVED   = "承認済み", "承認済み"  
         SHIPPED    = "発送済み","発送済み"
         COMPLETED  = "完了",    "完了"
         CANCELED   = "キャンセル","キャンセル"
@@ -172,6 +174,7 @@ class Purchase(models.Model):
     buyer_email    = models.EmailField(blank=True)
     seller_email   = models.EmailField(blank=True)
 
+    shipping_postal_code = models.CharField(max_length=20, blank=True, default="") 
     shipping_address = models.CharField(max_length=255, blank=True)
     payment_method   = models.CharField(max_length=50, blank=True)
     message          = models.TextField(blank=True)
@@ -181,6 +184,8 @@ class Purchase(models.Model):
 
     status          = models.CharField(max_length=10, choices=Status.choices, default=Status.REQUESTED)
     tracking_number = models.CharField(max_length=100, blank=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    shipped_at  = models.DateTimeField(null=True, blank=True) 
 
     created_at     = models.DateTimeField(auto_now_add=True)
     completed_date = models.DateTimeField(null=True, blank=True)

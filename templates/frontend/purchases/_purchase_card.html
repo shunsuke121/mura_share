@@ -1,4 +1,4 @@
-{# 1件分の購入カード。order と mode('mine'|'received') を受け取る #}
+{# 1件分の購入カード: 変数 order, mode('mine'|'received') #}
 <div class="card purch-card border-0 shadow-sm">
   <div class="card-body d-flex gap-3 align-items-start">
 
@@ -22,30 +22,37 @@
               {{ order.product.title|default:order.product_title }}
             </div>
           </a>
-          <div class="text-muted small">
-            {% if mode == 'mine' %}
-              販売者: {{ order.product.owner.username|default:"-" }}
-            {% else %}
-              購入者: {{ order.buyer.username|default:"-" }}
-            {% endif %}
-          </div>
+
+          {# 売り手が見る情報: 配送先/購入者/注文日 #}
+          {% if mode == 'received' %}
+            <div class="small text-muted mt-1">
+              配送先: {{ order.shipping_address|default:"-" }}
+            </div>
+            <div class="small text-muted">購入者: {{ order.buyer.username|default:"-" }}</div>
+            <div class="small text-muted">注文日: {{ order.created_at|date:"Y-m-d H:i" }}</div>
+          {% else %}
+            <div class="small text-muted">販売者: {{ order.product.owner.username|default:"-" }}</div>
+            <div class="small text-muted">注文日: {{ order.created_at|date:"Y-m-d H:i" }}</div>
+          {% endif %}
         </div>
 
         {# ステータスピル #}
         <div class="ms-2">
-            {% with st=order.status %}
-            {% if st == 'REQUESTED' or st == '申請中' %}
-                <span class="badge text-bg-secondary">申請中</span>
+          {% with st=order.status %}
+            {% if st == 'PENDING' or st == 'REQUESTED' or st == '申請中' %}
+              <span class="badge text-bg-secondary">承認待ち</span>
+            {% elif st == 'APPROVED' or st == '承認済み' %}
+              <span class="badge text-bg-primary">承認済み</span>
             {% elif st == 'SHIPPED' or st == '発送済み' %}
-                <span class="badge text-bg-info">発送済み</span>
+              <span class="badge text-bg-info">発送済み</span>
             {% elif st == 'COMPLETED' or st == '完了' %}
-                <span class="badge text-bg-success">完了</span>
+              <span class="badge text-bg-success">完了</span>
             {% elif st == 'CANCELED' or st == 'キャンセル' %}
-                <span class="badge text-bg-light text-muted">キャンセル</span>
+              <span class="badge text-bg-light text-muted">キャンセル</span>
             {% else %}
-                <span class="badge text-bg-light text-muted">{{ st }}</span>
+              <span class="badge text-bg-light text-muted">{{ st }}</span>
             {% endif %}
-            {% endwith %}
+          {% endwith %}
         </div>
       </div>
 
@@ -62,61 +69,128 @@
         {% endif %}
       </div>
 
-      {# 追跡番号（あれば） #}
       {% if order.tracking_number %}
         <div class="mt-1 small text-muted">追跡番号: {{ order.tracking_number }}</div>
       {% endif %}
 
-      {# --- アクション --- #}
-            <div class="mt-3 d-flex gap-2 flex-wrap">
-            {% with st=order.status %}
+      {# アクション #}
+      <div class="mt-3 d-flex gap-2 flex-wrap">
+        {% with st=order.status %}
 
-            {# 出品者側：申請中 → 発送 or キャンセル #}
-            {% if mode == 'received' %}
-            {% if st == 'REQUESTED' or st == '申請中' %}
-                <form method="post" action="{% url 'frontend:received_purchases' %}"
-                    class="d-flex gap-2 align-items-center">
-                {% csrf_token %}
-                <input type="hidden" name="purchase_id" value="{{ order.id }}">
-                <input type="hidden" name="action" value="ship">
-                <input type="text" name="tracking_number"
-                        class="form-control form-control-sm" placeholder="追跡番号" style="width:160px;">
-                <button type="submit" class="btn btn-sm btn-dark">発送する</button>
-                </form>
+          {# 売り手: 承認待ち → [承認] / [キャンセル] #}
+          {% if mode == 'received' and st == 'PENDING' %}
+            <form method="post" action="{% url 'frontend:received_purchases' %}">
+              {% csrf_token %}
+              <input type="hidden" name="purchase_id" value="{{ order.id }}">
+              <input type="hidden" name="action" value="approve">
+              <button type="submit" class="btn btn-sm btn-dark">承認</button>
+            </form>
+            <form method="post" action="{% url 'frontend:received_purchases' %}">
+              {% csrf_token %}
+              <input type="hidden" name="purchase_id" value="{{ order.id }}">
+              <input type="hidden" name="action" value="cancel">
+              <button type="submit" class="btn btn-sm btn-outline-secondary">キャンセル</button>
+            </form>
+          {% elif mode == 'received' and st == 'REQUESTED' %}
+            <form method="post" action="{% url 'frontend:received_purchases' %}">
+              {% csrf_token %}
+              <input type="hidden" name="purchase_id" value="{{ order.id }}">
+              <input type="hidden" name="action" value="approve">
+              <button type="submit" class="btn btn-sm btn-dark">承認</button>
+            </form>
+            <form method="post" action="{% url 'frontend:received_purchases' %}">
+              {% csrf_token %}
+              <input type="hidden" name="purchase_id" value="{{ order.id }}">
+              <input type="hidden" name="action" value="cancel">
+              <button type="submit" class="btn btn-sm btn-outline-secondary">キャンセル</button>
+            </form>
+          {% elif mode == 'received' and st == '申請中' %}
+            <form method="post" action="{% url 'frontend:received_purchases' %}">
+              {% csrf_token %}
+              <input type="hidden" name="purchase_id" value="{{ order.id }}">
+              <input type="hidden" name="action" value="approve">
+              <button type="submit" class="btn btn-sm btn-dark">承認</button>
+            </form>
+            <form method="post" action="{% url 'frontend:received_purchases' %}">
+              {% csrf_token %}
+              <input type="hidden" name="purchase_id" value="{{ order.id }}">
+              <input type="hidden" name="action" value="cancel">
+              <button type="submit" class="btn btn-sm btn-outline-secondary">キャンセル</button>
+            </form>
+          {% endif %}
 
-                <form method="post" action="{% url 'frontend:received_purchases' %}">
-                {% csrf_token %}
-                <input type="hidden" name="purchase_id" value="{{ order.id }}">
-                <input type="hidden" name="action" value="cancel">
-                <button type="submit" class="btn btn-sm btn-outline-secondary">キャンセル</button>
-                </form>
-            {% endif %}
-            {% endif %}
+          {# 売り手: 承認済み → 追跡番号 + [配送する] #}
+          {% if mode == 'received' and st == 'APPROVED' %}
+            <form method="post" action="{% url 'frontend:received_purchases' %}" class="d-flex gap-2 align-items-center">
+              {% csrf_token %}
+              <input type="hidden" name="purchase_id" value="{{ order.id }}">
+              <input type="hidden" name="action" value="ship">
+              <input type="text" name="tracking_number" class="form-control form-control-sm" placeholder="追跡番号" style="width: 180px;" required>
+              <button type="submit" class="btn btn-sm btn-dark">配送する</button>
+            </form>
+          {% elif mode == 'received' and st == '承認済み' %}
+            <form method="post" action="{% url 'frontend:received_purchases' %}" class="d-flex gap-2 align-items-center">
+              {% csrf_token %}
+              <input type="hidden" name="purchase_id" value="{{ order.id }}">
+              <input type="hidden" name="action" value="ship">
+              <input type="text" name="tracking_number" class="form-control form-control-sm" placeholder="追跡番号" style="width: 180px;" required>
+              <button type="submit" class="btn btn-sm btn-dark">配送する</button>
+            </form>
+          {% endif %}
 
-            {# 購入者側：発送済み → 受取完了 #}
-            {% if mode == 'mine' %}
-            {% if st == 'SHIPPED' or st == '発送済み' %}
-                <form method="post" action="{% url 'frontend:my_purchases' %}">
-                {% csrf_token %}
-                <input type="hidden" name="purchase_id" value="{{ order.id }}">
-                <input type="hidden" name="action" value="complete">
-                <button type="submit" class="btn btn-sm btn-dark">受取完了</button>
-                </form>
-            {% endif %}
+          {# 買い手: APPROVED/SHIPPED で [受取完了] #}
+          {% if mode == 'mine' and st == 'APPROVED' %}
+            <form method="post" action="{% url 'frontend:my_purchases' %}">
+              {% csrf_token %}
+              <input type="hidden" name="purchase_id" value="{{ order.id }}">
+              <input type="hidden" name="action" value="complete">
+              <button type="submit" class="btn btn-sm btn-dark">受取完了</button>
+            </form>
+          {% elif mode == 'mine' and st == 'SHIPPED' %}
+            <form method="post" action="{% url 'frontend:my_purchases' %}">
+              {% csrf_token %}
+              <input type="hidden" name="purchase_id" value="{{ order.id }}">
+              <input type="hidden" name="action" value="complete">
+              <button type="submit" class="btn btn-sm btn-dark">受取完了</button>
+            </form>
+          {% elif mode == 'mine' and st == '発送済み' %}
+            <form method="post" action="{% url 'frontend:my_purchases' %}">
+              {% csrf_token %}
+              <input type="hidden" name="purchase_id" value="{{ order.id }}">
+              <input type="hidden" name="action" value="complete">
+              <button type="submit" class="btn btn-sm btn-dark">受取完了</button>
+            </form>
+          {% endif %}
 
-            {# 購入者側：申請中 → キャンセル #}
-            {% if st == 'REQUESTED' or st == '申請中' %}
-                <form method="post" action="{% url 'frontend:my_purchases' %}">
-                {% csrf_token %}
-                <input type="hidden" name="purchase_id" value="{{ order.id }}">
-                <input type="hidden" name="action" value="cancel">
-                <button type="submit" class="btn btn-sm btn-outline-secondary">キャンセル</button>
-                </form>
-            {% endif %}
-            {% endif %}
+          {# 買い手: 承認待ちは説明 + キャンセル可 #}
+          {% if mode == 'mine' and st == 'PENDING' %}
+            <span class="text-muted small">現在、出品者の承認待ちです。</span>
+            <form method="post" action="{% url 'frontend:my_purchases' %}">
+              {% csrf_token %}
+              <input type="hidden" name="purchase_id" value="{{ order.id }}">
+              <input type="hidden" name="action" value="cancel">
+              <button type="submit" class="btn btn-sm btn-outline-secondary">キャンセル</button>
+            </form>
+          {% elif mode == 'mine' and st == 'REQUESTED' %}
+            <span class="text-muted small">現在、出品者の承認待ちです。</span>
+            <form method="post" action="{% url 'frontend:my_purchases' %}">
+              {% csrf_token %}
+              <input type="hidden" name="purchase_id" value="{{ order.id }}">
+              <input type="hidden" name="action" value="cancel">
+              <button type="submit" class="btn btn-sm btn-outline-secondary">キャンセル</button>
+            </form>
+          {% elif mode == 'mine' and st == '申請中' %}
+            <span class="text-muted small">現在、出品者の承認待ちです。</span>
+            <form method="post" action="{% url 'frontend:my_purchases' %}">
+              {% csrf_token %}
+              <input type="hidden" name="purchase_id" value="{{ order.id }}">
+              <input type="hidden" name="action" value="cancel">
+              <button type="submit" class="btn btn-sm btn-outline-secondary">キャンセル</button>
+            </form>
+          {% endif %}
 
-            {% endwith %}
-        </div>
+        {% endwith %}
+      </div>
     </div>
   </div>
 </div>
