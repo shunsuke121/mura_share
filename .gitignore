@@ -10,3 +10,4 @@ staticfiles/
 # Virtual env / secrets
 venv/
 .env
+db.sqlite3
