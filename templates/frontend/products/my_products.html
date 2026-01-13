@@ -25,7 +25,7 @@
               <div class="fw-semibold">{{ p.title }}</div>
               <div class="text-muted small">
                 提供: {{ p.availability_type }}
-                ・在庫: {{ p.available_quantity }}/{{ p.stock_quantity }}
+                ・在庫: {% if p.is_sold_out %}sold out{% else %}{{ p.available_quantity }}/{{ p.stock_quantity }}{% endif %}
               </div>
             </div>
 

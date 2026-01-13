@@ -64,7 +64,9 @@
 
     <div class="mb-2">
       <span class="badge bg-light text-dark border">状態：{{ product.condition }}</span>
-      {% if product.stock_quantity %}
+      {% if product.is_sold_out %}
+        <span class="badge bg-danger">sold out</span>
+      {% elif product.stock_quantity %}
         <span class="badge bg-light text-dark border">
           在庫：{{ product.available_quantity|default:product.stock_quantity }} / {{ product.stock_quantity }}
         </span>
@@ -123,79 +125,83 @@
           </div>
         {% else %}
           {# --- 申請フォーム（レンタル/購入の切替） --- #}
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h6 class="m-0">レンタル or 購入</h6>
-            <span class="badge bg-light text-dark">
-              {% if product.availability_type == 'レンタル・販売両方' %}レンタル・販売両方
-              {% elif product.availability_type == 'レンタルのみ' %}レンタルのみ
-              {% else %}販売のみ{% endif %}
-            </span>
-          </div>
-
-          {# タブ #}
-          <div class="btn-group w-100 mb-3" role="group" aria-label="order-type">
-            {% if product.availability_type != '販売のみ' %}
-              <button type="button" class="btn btn-outline-secondary order-tab active" data-mode="rental">レンタル</button>
-            {% endif %}
-            {% if product.availability_type != 'レンタルのみ' %}
-              <button type="button" class="btn btn-outline-secondary order-tab {% if product.availability_type == '販売のみ' %}active{% endif %}" data-mode="purchase">購入</button>
-            {% endif %}
-          </div>
-
-          <form method="post" action="{% url 'frontend:rental_apply' product.pk %}">
-            {% csrf_token %}
-            <input type="hidden" id="order_type" name="order_type"
-                   value="{% if product.availability_type == '販売のみ' %}purchase{% else %}rental{% endif %}">
-
-            <div class="mb-3">
-              <label class="form-label">個数 *</label>
-              <input type="number" name="quantity" class="form-control" value="1" min="1" required>
+          {% if product.is_sold_out %}
+            <div class="alert alert-secondary py-2 small mb-0">sold out</div>
+          {% else %}
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="m-0">レンタル or 購入</h6>
+              <span class="badge bg-light text-dark">
+                {% if product.availability_type == 'レンタル・販売両方' %}レンタル・販売両方
+                {% elif product.availability_type == 'レンタルのみ' %}レンタルのみ
+                {% else %}販売のみ{% endif %}
+              </span>
             </div>
 
-            {# レンタル専用フィールド #}
-            <div id="rental_fields" style="display:{% if product.availability_type == '販売のみ' %}none{% else %}block{% endif %};">
-              <div class="mb-3">
-                <label class="form-label">レンタル開始日 *</label>
-                <input type="date" name="start_date" class="form-control">
-                <div class="form-text">配送時間を考慮して開始日を選んでください。</div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">レンタル終了日 *</label>
-                <input type="date" name="end_date" class="form-control">
-              </div>
+            {# タブ #}
+            <div class="btn-group w-100 mb-3" role="group" aria-label="order-type">
+              {% if product.availability_type != '販売のみ' %}
+                <button type="button" class="btn btn-outline-secondary order-tab active" data-mode="rental">レンタル</button>
+              {% endif %}
+              {% if product.availability_type != 'レンタルのみ' %}
+                <button type="button" class="btn btn-outline-secondary order-tab {% if product.availability_type == '販売のみ' %}active{% endif %}" data-mode="purchase">購入</button>
+              {% endif %}
             </div>
 
-            <div class="mb-3">
-              <label class="form-label">配送先住所 *</label>
-              <div class="row g-2 mb-2">
-                <div class="col-6">
-                  <input type="text" name="postal_code" class="form-control" placeholder="郵便番号（ハイフンなし）">
+            <form method="post" action="{% url 'frontend:rental_apply' product.pk %}">
+              {% csrf_token %}
+              <input type="hidden" id="order_type" name="order_type"
+                     value="{% if product.availability_type == '販売のみ' %}purchase{% else %}rental{% endif %}">
+
+              <div class="mb-3">
+                <label class="form-label">個数 *</label>
+                <input type="number" name="quantity" class="form-control" value="1" min="1" required>
+              </div>
+
+              {# レンタル専用フィールド #}
+              <div id="rental_fields" style="display:{% if product.availability_type == '販売のみ' %}none{% else %}block{% endif %};">
+                <div class="mb-3">
+                  <label class="form-label">レンタル開始日 *</label>
+                  <input type="date" name="start_date" class="form-control">
+                  <div class="form-text">配送時間を考慮して開始日を選んでください。</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">レンタル終了日 *</label>
+                  <input type="date" name="end_date" class="form-control">
                 </div>
               </div>
-              <textarea name="address" rows="2" class="form-control" placeholder="住所"></textarea>
-              <div class="form-text">この住所は出品者には開示されません。</div>
-            </div>
 
-            <div class="mb-3">
-              <label class="form-label">決済方法 *</label>
-              <select name="payment_method" class="form-select" required>
-                <option value="">決済方法を選択</option>
-                <option value="card">クレジットカード</option>
-                <option value="convenience">コンビニ</option>
-                <option value="paypay">PayPay</option>
-                <option value="bank">銀行振込</option>
-              </select>
-            </div>
+              <div class="mb-3">
+                <label class="form-label">配送先住所 *</label>
+                <div class="row g-2 mb-2">
+                  <div class="col-6">
+                    <input type="text" name="postal_code" class="form-control" placeholder="郵便番号（ハイフンなし）">
+                  </div>
+                </div>
+                <textarea name="address" rows="2" class="form-control" placeholder="住所"></textarea>
+                <div class="form-text">この住所は出品者には開示されません。</div>
+              </div>
 
-            <div class="mb-3">
-              <label class="form-label">メッセージ（任意）</label>
-              <textarea name="message" rows="3" class="form-control" placeholder="オーナーへのメッセージ…"></textarea>
-            </div>
+              <div class="mb-3">
+                <label class="form-label">決済方法 *</label>
+                <select name="payment_method" class="form-select" required>
+                  <option value="">決済方法を選択</option>
+                  <option value="card">クレジットカード</option>
+                  <option value="convenience">コンビニ</option>
+                  <option value="paypay">PayPay</option>
+                  <option value="bank">銀行振込</option>
+                </select>
+              </div>
 
-            <button type="submit" id="submit_btn" class="btn btn-dark w-100">
-              {% if product.availability_type == '販売のみ' %}購入を申請する{% else %}レンタルを申請する{% endif %}
-            </button>
-          </form>
+              <div class="mb-3">
+                <label class="form-label">メッセージ（任意）</label>
+                <textarea name="message" rows="3" class="form-control" placeholder="オーナーへのメッセージ…"></textarea>
+              </div>
+
+              <button type="submit" id="submit_btn" class="btn btn-dark w-100">
+                {% if product.availability_type == '販売のみ' %}購入を申請する{% else %}レンタルを申請する{% endif %}
+              </button>
+            </form>
+          {% endif %}
         {% endif %}
       </div>
     </div>

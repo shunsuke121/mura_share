@@ -93,7 +93,9 @@
             </button>
             <i class="bi bi-chat"></i>
           </div>
-          {% if p.available_quantity or p.stock_quantity %}
+          {% if p.is_sold_out %}
+            <div class="pc-meta text-danger fw-semibold">sold out</div>
+          {% elif p.available_quantity or p.stock_quantity %}
             <div class="pc-meta">在庫 {{ p.available_quantity|default:0 }}{% if p.stock_quantity %}/{{ p.stock_quantity }}{% endif %}</div>
           {% endif %}
         </div>

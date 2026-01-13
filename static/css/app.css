@@ -690,3 +690,21 @@ textarea.form-control {
   width: 1.35rem;
 }
 
+.fav-btn { line-height: 1; }
+
+
+.trade-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 5;
+  display: inline-block;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 6px;
+  color: #fff;
+  backdrop-filter: saturate(120%) blur(2px);
+}
+.trade-badge--rental { background: #0ea5e9; }   /* 水色 */
+.trade-badge--purchase { background: #22c55e; } /* 緑 */

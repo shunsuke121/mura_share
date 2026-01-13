@@ -15,11 +15,14 @@ urlpatterns = [
     # frontend/urls.py
     path('products/<int:pk>/favorite/toggle/', views.product_favorite_toggle, name='product_favorite_toggle'),
 
-
+    path("profile/history/", views.profile_history, name="profile_history"),
+    path("rentals/<int:rental_id>/finish/", views.rental_finish, name="rental_finish"),
+    path("purchases/<int:purchase_id>/receive_done/", views.purchase_receive_done, name="purchase_receive_done"),
 
     # 追加: 編集 / 削除API
     path("products/<int:pk>/edit/", views.product_edit, name="product_edit"),
     path("products/<int:pk>/delete/", views.product_delete_api, name="product_delete_api"),
+
 
     # ルートを一覧へ
     path("", RedirectView.as_view(pattern_name="frontend:products", permanent=False)),
@@ -30,6 +33,7 @@ urlpatterns = [
     path("purchases/received/", views.received_purchases, name="received_purchases"),
     path("rentals/received/", views.received_rentals, name="received_rentals"),
     path("rentals/", views.rentals_index, name="rentals"),
+
 
     path("returns/", views.returns_index, name="returns"),
     path("returns/action/", views.return_action, name="return_action"),
@@ -64,11 +68,7 @@ urlpatterns = [
     # ▼ 追加（私の申請をキャンセル）
     path("rentals/applications/<int:app_id>/cancel/", views.rental_app_cancel, name="rental_app_cancel"),
     # 借り手側のアクション
-path("rentals/app/<int:app_id>/receive/",      views.rental_app_receive,      name="rental_app_receive"),
-path("rentals/app/<int:app_id>/return_ship/",  views.rental_app_return_ship,  name="rental_app_return_ship"),
-path(
-    "rentals/app/<int:app_id>/confirm_return/",
-    views.rental_app_confirm_return,
-    name="rental_app_confirm_return",
-),
+    path("rentals/app/<int:app_id>/receive/",      views.rental_app_receive,      name="rental_app_receive"),
+    path("rentals/app/<int:app_id>/return_ship/",  views.rental_app_return_ship,  name="rental_app_return_ship"),
+    path("rentals/app/<int:app_id>/confirm_return/", views.rental_app_confirm_return, name="rental_app_confirm_return",),
 ]

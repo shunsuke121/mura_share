@@ -26,14 +26,14 @@
   {% endif %}
 
   <div class="segmented mb-4">
-<a href="{% url 'frontend:my_applications' %}"
-   class="sidebar-link d-flex align-items-center {% if name == 'my_applications' %}is-active{% endif %}">
-  <i class="bi bi-person-check me-2"></i> 私の申請
-</a>
-<a href="{% url 'frontend:rental_manage' %}"
-   class="sidebar-link d-flex align-items-center {% if name == 'rental_manage' %}is-active{% endif %}">
-  <i class="bi bi-inbox me-2"></i> 受け取った申請
-</a>
+    <a class="seg-btn {% if active_tab != 'received' %}active{% endif %}"
+       href="{% url 'frontend:rentals' %}?tab=mine">
+      私のレンタル ({{ mine|length }})
+    </a>
+    <a class="seg-btn {% if active_tab == 'received' %}active{% endif %}"
+       href="{% url 'frontend:rentals' %}?tab=received">
+      受け取ったレンタル ({{ received|length }})
+    </a>
   </div>
 
   {% if active_tab == 'received' %}

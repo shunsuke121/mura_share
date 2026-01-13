@@ -55,14 +55,6 @@
   </div>
 
   <div class="p-6 space-y-4 text-sm">
-    {# 配送先住所（借り手本人 or オーナー本人のみ） #}
-    {% if rental.shipping_address and (is_my_rental or rental.owner_email == request.user.email) %}
-      <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-blue-800">
-        <p class="text-xs text-blue-600 mb-1">配送先住所</p>
-        <p>{{ rental.shipping_address }}</p>
-      </div>
-    {% endif %}
-
     {% if rental.tracking_number_to_renter %}
       <div class="bg-purple-50 border border-purple-200 rounded-lg p-3 text-purple-800">
         <p class="text-xs text-purple-600 mb-1">配送追跡番号（往路）</p>

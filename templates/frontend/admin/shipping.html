@@ -1,5 +1,59 @@
 {% extends "base.html" %}
+{% block title %}配送管理{% endblock %}
 {% block content %}
-<h2 class="h4 mb-3">配送管理（管理者）</h2>
-<p class="text-danger small">この画面は管理者のみ。配送先/返却先住所、追跡番号、ステータスを一覧表示します。</p>
+<div class="container py-4">
+  <h5 class="mb-3">配送管理</h5>
+
+  <form method="get" class="mb-3">
+    <div class="input-group" style="max-width:480px;">
+      <input type="text" class="form-control" name="q" value="{{ request.GET.q }}" placeholder="商品名・追跡番号・氏名で検索">
+      <button class="btn btn-outline-secondary" type="submit">検索</button>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>作成</th>
+          <th>区分</th>
+          <th>方向</th>
+          <th>商品</th>
+          <th>出品者/貸し手</th>
+          <th>購入者/借り手</th>
+          <th>追跡番号</th>
+          <th>状態</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in shipments %}
+        <tr>
+          <td class="text-muted">{{ s.created_at|date:"Y-m-d H:i" }}</td>
+          <td><span class="badge bg-dark">{{ s.get_kind_display }}</span></td>
+          <td><span class="badge bg-secondary">{{ s.get_direction_display }}</span></td>
+          <td>
+            {% if s.product %}
+              <a href="{% url 'frontend:product_detail' s.product.id %}">#{{ s.product.id }} {{ s.product.title }}</a>
+            {% else %}-{% endif %}
+          </td>
+          <td>
+            <div class="small text-muted">{{ s.seller_label|default:"-" }}</div>
+            <div>{{ s.seller_name|default:"-" }}</div>
+            <div class="small text-muted">{{ s.seller_address|default:"-" }}</div>
+          </td>
+          <td>
+            <div class="small text-muted">{{ s.buyer_label|default:"-" }}</div>
+            <div>{{ s.buyer_name|default:"-" }}</div>
+            <div class="small text-muted">{{ s.buyer_address|default:"-" }}</div>
+          </td>
+          <td><code>{{ s.tracking_no|default:"未登録" }}</code></td>
+          <td>{{ s.get_status_display }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-center text-muted py-4">まだ配送がありません。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}

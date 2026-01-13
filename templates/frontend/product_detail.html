@@ -34,7 +34,9 @@
       <div class="mb-3">販売: <strong>¥{{ object.price_buy|floatformat:0 }}</strong></div>
     {% endif %}
 
-    {% if object.available_quantity or object.stock_quantity %}
+    {% if object.is_sold_out %}
+      <div class="mb-3 text-danger fw-semibold">sold out</div>
+    {% elif object.available_quantity or object.stock_quantity %}
       <div class="mb-3 text-muted">
         在庫:
         {% if object.available_quantity %}{{ object.available_quantity }}{% else %}0{% endif %}
@@ -46,15 +48,19 @@
 
     {% if user.is_authenticated and user != object.owner %}
       <hr>
-      <h3 class="h6">レンタル申請</h3>
-      <form method="post" action="{% url 'rental_request' object.pk %}">
-        {% csrf_token %}
-        <div class="row g-2">
-          <div class="col"><input type="date" name="start_date" class="form-control" required></div>
-          <div class="col"><input type="date" name="end_date" class="form-control" required></div>
-        </div>
-        <button class="btn btn-success mt-2">申請する</button>
-      </form>
+      {% if object.is_sold_out %}
+        <div class="alert alert-secondary py-2 small mb-0">sold out</div>
+      {% else %}
+        <h3 class="h6">レンタル申請</h3>
+        <form method="post" action="{% url 'rental_request' object.pk %}">
+          {% csrf_token %}
+          <div class="row g-2">
+            <div class="col"><input type="date" name="start_date" class="form-control" required></div>
+            <div class="col"><input type="date" name="end_date" class="form-control" required></div>
+          </div>
+          <button class="btn btn-success mt-2">申請する</button>
+        </form>
+      {% endif %}
     {% elif not user.is_authenticated %}
       <a href="{% url 'frontend:login' %}" class="btn btn-outline-primary">ログインしてレンタル申請</a>
     {% endif %}

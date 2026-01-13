@@ -2,17 +2,30 @@
 {% load humanize %}
 
 {% block content %}
-<div class="container-xxl py-4">
-  <h1 class="fw-bold mb-1">レンタル管理</h1>
-  <div class="text-muted mb-3">あなたのレンタル申請と受け取った申請を管理</div>
+<div class="container-xxl py-4 rentals">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h2 class="fw-bold mb-1">レンタル管理</h2>
+      <div class="text-muted">あなたのレンタル申請と受け取った申請を管理</div>
+    </div>
+  </div>
 
-  {# タブ（購入管理のUIと同じ見た目） #}
-  <div class="btn-group w-100 mb-3" role="group">
-    <a class="btn btn-outline-secondary {% if active_tab != 'received' %}active{% endif %}"
+  {% if messages %}
+    <div class="mb-3">
+      {% for message in messages %}
+        <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-danger{% else %}alert-secondary{% endif %} py-2 mb-2">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="segmented mb-4">
+    <a class="seg-btn {% if active_tab != 'received' %}active{% endif %}"
        href="{% url 'frontend:my_applications' %}">
       私の申請 ({{ mine_count|default:0 }})
     </a>
-    <a class="btn btn-dark {% if active_tab == 'received' %}active{% endif %}"
+    <a class="seg-btn {% if active_tab == 'received' %}active{% endif %}"
        href="{% url 'frontend:rental_manage' %}">
       受け取った申請 ({{ received_count|default:0 }})
     </a>
@@ -45,12 +58,6 @@
               {% endif %}
               <span class="badge bg-light text-dark">{{ a.quantity|default:1 }}点</span>
               <span class="badge bg-secondary">{{ a.get_status_display|default:a.status }}</span>
-            </div>
-
-            {# 住所 #}
-            <div class="bg-light rounded-2 p-3 my-3">
-              <div class="small text-muted">配送先住所</div>
-              <div>〒{{ a.postal_code }} {{ a.address }}</div>
             </div>
 
             {# 期間・借り手・メッセージ #}
@@ -133,7 +140,10 @@
       {% endfor %}
     </div>
   {% else %}
-    <div class="text-center text-muted py-5">受け取った申請はまだありません。</div>
+    <div class="text-center py-5 empty-state">
+      <div class="empty-title">受け取った申請はまだありません</div>
+      <div class="empty-sub">相手からの申請が届くとここに表示されます。</div>
+    </div>
   {% endif %}
 </div>
 {% endblock %}

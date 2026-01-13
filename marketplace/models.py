@@ -22,6 +22,16 @@ class Product(models.Model):
             except Exception:
                 return ""
         return ""
+
+    @property
+    def available_count(self):
+        if self.available_quantity is None:
+            return self.stock_quantity or 0
+        return self.available_quantity
+
+    @property
+    def is_sold_out(self):
+        return self.available_count <= 0
     class Status(models.IntegerChoices):
         DRAFT    = 0, "下書き"
         LISTED   = 1, "出品中"
@@ -319,7 +329,126 @@ class RentalApplication(models.Model):
 
     def __str__(self):
         return f'{self.get_order_type_display()}申請: product={self.product_id}, by={self.renter_id}'
-# --- 追記ここまで ----------------------------------------------------------
 
-# --- 追記ここまで ----------------------------------------------------------
+
+# --- Shipment（配送管理） -----------------------------------------
+# 末尾あたりに追加
+from django.db.models import Q
+class Shipment(models.Model):
+    class Kind(models.TextChoices):
+        RENTAL   = "rental", "レンタル"
+        PURCHASE = "purchase", "購入"
+
+    # 往路=出品者/貸し手→買い手/借り手、返送=買い手/借り手→出品者/貸し手
+    class Direction(models.TextChoices):
+        OUTBOUND = "outbound", "往路"
+        RETURN   = "return",   "返送"
+        INBOUND  = "inbound",  "受領側（内部用）"  # 返品の受領側用に残す
+
+    class Status(models.TextChoices):
+        CREATED    = "created",     "作成"
+        IN_TRANSIT = "in_transit",  "輸送中"
+        DELIVERED  = "delivered",   "配達完了"
+        CANCELED   = "canceled",    "キャンセル"
+
+    kind      = models.CharField(max_length=10, choices=Kind.choices)
+    direction = models.CharField(max_length=10, choices=Direction.choices)
+    status    = models.CharField(max_length=12, choices=Status.choices, default=Status.CREATED)
+
+    product  = models.ForeignKey("marketplace.Product", on_delete=models.CASCADE, related_name="shipments")
+
+    # 既存（Rental/Purchase）
+    rental   = models.ForeignKey(
+        "marketplace.Rental",
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name="shipments"
+    )
+    purchase = models.ForeignKey(
+        "marketplace.Purchase",
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name="shipments"
+    )
+
+    # ★追加：RentalApplication（申請フロー）でも配送管理に出せるようにする
+    application = models.ForeignKey(
+        "marketplace.RentalApplication",
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name="shipments"
+    )
+
+    # 住所スナップショット（当事者同士を直接見ない想定）
+    from_name    = models.CharField(max_length=120, blank=True, default="")
+    from_phone   = models.CharField(max_length=40,  blank=True, default="")
+    from_postal  = models.CharField(max_length=20,  blank=True, default="")
+    from_address = models.CharField(max_length=255, blank=True, default="")
+
+    to_name    = models.CharField(max_length=120, blank=True, default="")
+    to_phone   = models.CharField(max_length=40,  blank=True, default="")
+    to_postal  = models.CharField(max_length=20,  blank=True, default="")
+    to_address = models.CharField(max_length=255, blank=True, default="")
+
+    tracking_no = models.CharField(max_length=100, blank=True, default="")
+    is_platform_intermediated = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=["kind"]),
+            models.Index(fields=["direction"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["tracking_no"]),
+            models.Index(fields=["rental"]),
+            models.Index(fields=["purchase"]),
+            models.Index(fields=["application"]),  # ★追加
+        ]
+        constraints = [
+            # ★同じ取引(= rental/purchase/application) + direction は1件に固定
+            models.UniqueConstraint(
+                fields=["rental", "direction"],
+                condition=Q(rental__isnull=False),
+                name="uniq_shipment_rental_direction",
+            ),
+            models.UniqueConstraint(
+                fields=["purchase", "direction"],
+                condition=Q(purchase__isnull=False),
+                name="uniq_shipment_purchase_direction",
+            ),
+            models.UniqueConstraint(
+                fields=["application", "direction"],
+                condition=Q(application__isnull=False),
+                name="uniq_shipment_application_direction",
+            ),
+
+            # ★kind と紐付け先の整合性（雑に事故らないための最低限）
+            models.CheckConstraint(
+                check=(
+                    # kind=rental のとき：rental か application のどっちか（purchaseは無し）
+                    (Q(kind="rental") & (Q(rental__isnull=False) | Q(application__isnull=False)) & Q(purchase__isnull=True))
+                    |
+                    # kind=purchase のとき：purchase 必須（rental/applicationは無し）
+                    (Q(kind="purchase") & Q(purchase__isnull=False) & Q(rental__isnull=True) & Q(application__isnull=True))
+                ),
+                name="chk_shipment_kind_fk_consistency",
+            ),
+            # ★rental と application を同時に入れない（混ぜると地獄）
+            models.CheckConstraint(
+                check=~(Q(rental__isnull=False) & Q(application__isnull=False)),
+                name="chk_shipment_rental_xor_application",
+            ),
+        ]
+
+    def __str__(self):
+        pid = getattr(self.product, "id", None)
+        rid = getattr(self.rental, "id", None)
+        aid = getattr(self.application, "id", None)
+        pur = getattr(self.purchase, "id", None)
+        ref = f"R#{rid}" if rid else (f"A#{aid}" if aid else (f"PU#{pur}" if pur else "-"))
+        return f"{self.get_kind_display()} / {self.get_direction_display()} / P#{pid} / {ref} / {self.tracking_no or '-'}"
+
 
