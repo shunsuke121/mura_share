@@ -66,9 +66,16 @@
           </ul>
         </div>
 
-        <div class="ms-avatar" title="{{ request.user.username }}">
-          {{ request.user.username|first|default:"U"|upper }}
-        </div>
+        <a href="{% url 'frontend:profile' %}"
+           class="ms-avatar text-decoration-none"
+           title="{{ request.user.username }}"
+           aria-label="Profile">
+          {% if request.user.profile.profile_image %}
+            <img src="{{ request.user.profile.profile_image.url }}" alt="{{ request.user.username }}">
+          {% else %}
+            {{ request.user.username|first|default:"U"|upper }}
+          {% endif %}
+        </a>
       {% else %}
         <a href="{% url 'frontend:login' %}" class="ms-icon-btn" aria-label="通知">
           <i class="bi bi-bell"></i>

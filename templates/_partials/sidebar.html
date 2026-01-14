@@ -85,15 +85,21 @@
   <!-- フッター -->
   <div class="mt-auto pt-3 sidebar-footer small">
     {% if request.user.is_authenticated %}
-      <div class="d-flex align-items-center mb-2">
+      <a href="{% url 'frontend:profile' %}"
+         class="d-flex align-items-center mb-2 text-decoration-none text-reset"
+         aria-label="プロフィール">
         <div class="sidebar-avatar me-2">
-          {{ request.user.username|first|upper }}
+          {% if request.user.profile.profile_image %}
+            <img src="{{ request.user.profile.profile_image.url }}" alt="{{ request.user.username }}">
+          {% else %}
+            {{ request.user.username|first|upper }}
+          {% endif %}
         </div>
         <div class="flex-grow-1">
           <div class="sidebar-user-name">{{ request.user.username }}</div>
           <div class="sidebar-user-email text-truncate">{{ request.user.email }}</div>
         </div>
-      </div>
+      </a>
 
       <div class="d-grid gap-2">
         <form method="post" action="{% url 'frontend:logout' %}">
