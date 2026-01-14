@@ -2,29 +2,51 @@
 {% block title %}チャット{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <h3>{{ room.product.title }} のチャット</h3>
-    <hr>
-    <div class="messages-box mb-3" style="height: 400px; overflow-y: scroll;">
-    {% for msg in messages %}
-        <div class="mb-2 {% if msg.user.id == request.user.id %}text-end{% endif %}">
-            <div class="p-2 d-inline-block border rounded">
-                <strong>{{ msg.user.username }}</strong><br>
-                {{ msg.body }}
-            <div class="text-muted" style="font-size: 12px;">
-                {{ msg.created_at|date:"n/j H:i" }}
-            </div>
-        </div>
+<div class="container-xxl py-4">
+  <div class="card mb-3 shadow-sm">
+    <div class="card-body d-flex flex-column flex-md-row gap-3 align-items-md-center">
+      <div class="flex-grow-1">
+        <div class="fw-semibold">{{ room.product.title }}</div>
+        <div class="small text-muted">相手: {{ counterparty_name }}</div>
+        {% if transaction_info %}
+          <div class="small text-muted">取引: {{ transaction_info.label }} #{{ transaction_info.id }} · {{ transaction_info.status }}</div>
+          {% for label, value in transaction_info.tracking %}
+            {% if value %}
+              <div class="small text-muted">{{ label }}: {{ value }}</div>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      </div>
+      <div class="ms-md-auto">
+        <a href="{% url 'frontend:product_detail' room.product.id %}" class="btn btn-outline-secondary btn-sm">商品を見る</a>
+      </div>
     </div>
-    {% endfor %}
-    </div>
+  </div>
 
-    <form method="POST" action="{% url 'chat:send_message' room.id %}">
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div class="messages-box mb-3" style="height: 420px; overflow-y: auto;">
+        {% for msg in messages %}
+          <div class="mb-2 {% if msg.user.id == request.user.id %}text-end{% endif %}">
+            <div class="p-2 d-inline-block border rounded">
+              <strong>{{ msg.user.username }}</strong><br>
+              {{ msg.body }}
+              <div class="text-muted" style="font-size: 12px;">
+                {{ msg.created_at|date:"n/j H:i" }}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <form method="POST" action="{% url 'chat:send_message' room.id %}">
         {% csrf_token %}
         <div class="input-group">
-            <input type="text" name="body" class="form-control" placeholder="メッセージを入力..." required>
-            <button class="btn btn-primary">送信</button>
+          <input type="text" name="body" class="form-control" placeholder="メッセージを入力..." required>
+          <button class="btn btn-primary">送信</button>
         </div>
-    </form>
+      </form>
+    </div>
+  </div>
 </div>
 {% endblock %}

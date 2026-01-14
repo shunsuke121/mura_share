@@ -8,7 +8,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.db import transaction
-from django.db.models import Q, Prefetch, Exists, OuterRef, Value, BooleanField
+from django.db.models import Q, Prefetch, Exists, OuterRef, Value, BooleanField, Count, Subquery
 from django.db.models.functions import Coalesce
 from django.http import (
     JsonResponse, HttpResponseBadRequest, HttpResponseForbidden, Http404
@@ -26,6 +26,7 @@ import re
 
 from accounts.models import Profile
 from .models import ContactInquiry
+from chat.models import ChatRoom, ChatMessage
 from marketplace.models import (
     Product, ProductImage, RentalApplication, Rental, Purchase, ProductFavorite, Shipment
 )
@@ -643,8 +644,140 @@ class ReturnListPage(TemplateView):
     template_name = "frontend/returns/index.html"
 
 
-class MessagesPage(TemplateView):
+class MessagesPage(LoginRequiredMixin, TemplateView):
     template_name = "frontend/messages/index.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        user = self.request.user
+
+        purchases = (
+            Purchase.objects
+            .select_related("product", "buyer", "product__owner", "buyer__profile", "product__owner__profile")
+            .filter(Q(buyer=user) | Q(product__owner=user))
+            .order_by("-created_at")
+        )
+        rentals = (
+            Rental.objects
+            .select_related("product", "renter", "product__owner", "renter__profile", "product__owner__profile")
+            .filter(Q(renter=user) | Q(product__owner=user))
+            .order_by("-created_at")
+        )
+        applications = (
+            RentalApplication.objects
+            .select_related("product", "owner", "renter", "owner__profile", "renter__profile")
+            .filter(Q(owner=user) | Q(renter=user))
+            .order_by("-created_at")
+        )
+
+        purchase_ids = list(purchases.values_list("id", flat=True))
+        rental_ids = list(rentals.values_list("id", flat=True))
+        app_ids = list(applications.values_list("id", flat=True))
+
+        room_qs = ChatRoom.objects.select_related(
+            "product",
+            "user1",
+            "user2",
+            "purchase",
+            "rental",
+            "application",
+        )
+        if purchase_ids or rental_ids or app_ids:
+            room_qs = room_qs.filter(
+                Q(purchase_id__in=purchase_ids)
+                | Q(rental_id__in=rental_ids)
+                | Q(application_id__in=app_ids)
+            )
+            last_body = (
+                ChatMessage.objects
+                .filter(room_id=OuterRef("pk"))
+                .order_by("-created_at")
+                .values("body")[:1]
+            )
+            last_at = (
+                ChatMessage.objects
+                .filter(room_id=OuterRef("pk"))
+                .order_by("-created_at")
+                .values("created_at")[:1]
+            )
+            room_qs = room_qs.annotate(
+                last_message_body=Subquery(last_body),
+                last_message_at=Subquery(last_at),
+                unread_count=Count(
+                    "messages",
+                    filter=Q(messages__is_read=False) & ~Q(messages__user=user),
+                ),
+            )
+        else:
+            room_qs = ChatRoom.objects.none()
+
+        room_by_purchase = {room.purchase_id: room for room in room_qs if room.purchase_id}
+        room_by_rental = {room.rental_id: room for room in room_qs if room.rental_id}
+        room_by_app = {room.application_id: room for room in room_qs if room.application_id}
+
+        def display_name(target):
+            if not target:
+                return ""
+            prof = getattr(target, "profile", None)
+            return (getattr(prof, "display_name", "") or getattr(target, "username", ""))
+
+        transactions = []
+
+        for p in purchases:
+            other = p.product.owner if p.buyer_id == user.id else p.buyer
+            room = room_by_purchase.get(p.id)
+            last_at = getattr(room, "last_message_at", None) if room else None
+            transactions.append({
+                "kind_label": "購入",
+                "created_at": p.created_at,
+                "activity_at": last_at or p.created_at,
+                "product_title": p.product_title or getattr(p.product, "title", ""),
+                "other_name": display_name(other),
+                "status_label": p.get_status_display() if hasattr(p, "get_status_display") else p.status,
+                "chat_url": reverse("chat:chat_detail", args=[room.id]) if room else reverse("chat:start_purchase_chat", args=[p.id]),
+                "last_message": getattr(room, "last_message_body", "") if room else "",
+                "unread": getattr(room, "unread_count", 0) if room else 0,
+            })
+
+        for r in rentals:
+            other = r.product.owner if r.renter_id == user.id else r.renter
+            room = room_by_rental.get(r.id)
+            last_at = getattr(room, "last_message_at", None) if room else None
+            transactions.append({
+                "kind_label": "レンタル",
+                "created_at": r.created_at,
+                "activity_at": last_at or r.created_at,
+                "product_title": r.product_title or getattr(r.product, "title", ""),
+                "other_name": display_name(other),
+                "status_label": r.get_status_display() if hasattr(r, "get_status_display") else r.status,
+                "chat_url": reverse("chat:chat_detail", args=[room.id]) if room else reverse("chat:start_rental_chat", args=[r.id]),
+                "last_message": getattr(room, "last_message_body", "") if room else "",
+                "unread": getattr(room, "unread_count", 0) if room else 0,
+            })
+
+        for a in applications:
+            other = a.owner if a.renter_id == user.id else a.renter
+            order_label = "レンタル" if a.order_type == RentalApplication.OrderType.RENTAL else "購入"
+            room = room_by_app.get(a.id)
+            last_at = getattr(room, "last_message_at", None) if room else None
+            transactions.append({
+                "kind_label": order_label,
+                "created_at": a.created_at,
+                "activity_at": last_at or a.created_at,
+                "product_title": getattr(a.product, "title", ""),
+                "other_name": display_name(other),
+                "status_label": a.get_status_display() if hasattr(a, "get_status_display") else a.status,
+                "chat_url": reverse("chat:chat_detail", args=[room.id]) if room else reverse("chat:start_rental_app_chat", args=[a.id]),
+                "last_message": getattr(room, "last_message_body", "") if room else "",
+                "unread": getattr(room, "unread_count", 0) if room else 0,
+            })
+
+        transactions.sort(
+            key=lambda item: item.get("activity_at") or item.get("created_at") or timezone.now(),
+            reverse=True,
+        )
+        ctx["transactions"] = transactions
+        return ctx
 
 
 class DocumentationView(TemplateView):

@@ -799,3 +799,98 @@ textarea.form-control {
 }
 .trade-badge--rental { background: #0ea5e9; }   /* 水色 */
 .trade-badge--purchase { background: #22c55e; } /* 緑 */
+
+/* === Messages list === */
+.chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.chat-row:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.chat-row.is-unread {
+  border-color: #fda4af;
+  background: #fff7f7;
+}
+
+.chat-row-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-title {
+  font-weight: 600;
+  font-size: 0.98rem;
+  color: #111827;
+}
+
+.chat-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+.chat-kind {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.chat-status {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.chat-last {
+  margin-top: 6px;
+  font-size: 0.88rem;
+  color: #374151;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-row-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.chat-row-side .bi {
+  font-size: 1rem;
+}
+
+@media (max-width: 575.98px) {
+  .chat-row {
+    align-items: flex-start;
+  }
+
+  .chat-row-side {
+    flex-direction: row;
+    align-items: center;
+  }
+}

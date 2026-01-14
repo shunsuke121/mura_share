@@ -4,7 +4,7 @@ from .models import ChatRoom, ChatMessage
 class ChatRoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatRoom
-        fields = ["id","product","user1","user2","created_at"]
+        fields = ["id","product","user1","user2","rental","purchase","application","created_at"]
 
 class ChatMessageSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(read_only=True)
