@@ -49,5 +49,7 @@ urlpatterns = [
 
 # 既存の urlpatterns の下など、モジュール直下にこれを追加
 handler403 = "frontend.views.error_403"
+handler404 = "frontend.views.error_404"
+handler500 = "frontend.views.error_500"
 
 

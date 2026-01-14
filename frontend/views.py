@@ -1,6 +1,6 @@
 # frontend/views.py  — 整理済み
 
-from django.contrib.auth import login
+from django.contrib.auth import login, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -91,6 +91,36 @@ def _create_notification(
                     return c
             return None
 
+        def resolve_user(value):
+            if value is None:
+                return None
+            if hasattr(value, "id"):
+                return value
+            email = str(value or "").strip()
+            if not email:
+                return None
+            try:
+                return get_user_model().objects.filter(email=email).first()
+            except Exception:
+                return None
+
+        if "user" in field_names:
+            user = resolve_user(recipient_email)
+            if not user:
+                return
+            body = message or title or ""
+            if title and message:
+                body = f"{title} - {message}"
+            data = {"user": user}
+            k = pick("message", "body", "content")
+            if k:
+                data[k] = body
+            k = pick("type", "kind", "category")
+            if k:
+                data[k] = kind
+            Notification.objects.create(**data)
+            return
+
         data = {}
         k = pick("recipient_email", "email", "to_email")
         if k: data[k] = recipient_email or ""
@@ -141,6 +171,16 @@ def _adjust_available_quantity(product, delta):
     product.save(update_fields=["available_quantity"])
 
 
+def _strip_return_tracking_line(message):
+    if not message:
+        return ""
+    lines = [
+        line for line in str(message).splitlines()
+        if not line.startswith("[返却追跡番号]")
+    ]
+    return "\n".join(lines).strip()
+
+
 def _handle_rental_action(request, user, redirect_name):
     action = request.POST.get("action")
     rental_id = request.POST.get("rental_id")
@@ -170,7 +210,7 @@ def _handle_rental_action(request, user, redirect_name):
             )
 
             _create_notification(
-                rental.renter_email,
+                rental.renter,
                 "レンタル承認",
                 f"「{rental.product_title}」のレンタルが承認されました。",
                 rental.id,
@@ -215,7 +255,7 @@ def _handle_rental_action(request, user, redirect_name):
 
 
             _create_notification(
-                rental.renter_email,
+                rental.renter,
                 "商品発送のお知らせ",
                 f"「{rental.product_title}」が発送されました。到着したら「受取完了」を押してください。",
                 rental.id,
@@ -237,7 +277,7 @@ def _handle_rental_action(request, user, redirect_name):
             rental.save(update_fields=["status", "received_date_by_renter", "rental_start_date"])
 
             _create_notification(
-                rental.owner_email,
+                rental.product.owner,
                 "商品受け取り完了",
                 f"「{rental.product_title}」が借り手に届き、レンタルが開始されました。",
                 rental.id,
@@ -282,7 +322,7 @@ def _handle_rental_action(request, user, redirect_name):
 
 
             _create_notification(
-                rental.owner_email,
+                rental.product.owner,
                 "商品返却発送のお知らせ",
                 f"「{rental.product_title}」が返却のために発送されました。到着確認をしてください。",
                 rental.id,
@@ -307,9 +347,9 @@ def _handle_rental_action(request, user, redirect_name):
             product.available_quantity = (current_available or 0) + (rental.quantity or 1)
             product.save(update_fields=["available_quantity"])
 
-            for email in [rental.renter_email, rental.owner_email]:
+            for notify_user in [rental.renter, rental.product.owner]:
                 _create_notification(
-                    email,
+                    notify_user,
                     "レンタル完了",
                     f"「{rental.product_title}」のレンタルが完了しました。",
                     rental.id,
@@ -339,9 +379,9 @@ def _handle_rental_action(request, user, redirect_name):
                 product.available_quantity = (current_available or 0) + (rental.quantity or 1)
                 product.save(update_fields=["available_quantity"])
 
-            for email in [rental.renter_email, rental.owner_email]:
+            for notify_user in [rental.renter, rental.product.owner]:
                 _create_notification(
-                    email,
+                    notify_user,
                     "レンタルキャンセル",
                     f"「{rental.product_title}」のレンタルがキャンセルされました。",
                     rental.id,
@@ -723,6 +763,28 @@ def rental_manage(request):
     apps = list(RentalApplication.objects.filter(
         owner=request.user
     ).select_related("product", "renter").order_by("-created_at"))
+    STATUS_LABELS = {
+        "PENDING": "申請中",
+        "APPROVED": "承認済み",
+        "SHIPPED": "発送済み",
+        "RECEIVED": "受取済み",
+        "RENTING": "レンタル中",
+        "RETURN_SHIPPED": "返却発送済み",
+        "COMPLETED": "完了",
+        "REJECTED": "却下",
+        "CANCELLED": "キャンセル",
+    }
+    BADGE_CLASS = {
+        "PENDING": "secondary",
+        "APPROVED": "primary",
+        "SHIPPED": "info",
+        "RECEIVED": "success",
+        "RENTING": "success",
+        "RETURN_SHIPPED": "dark",
+        "COMPLETED": "secondary",
+        "REJECTED": "danger",
+        "CANCELLED": "dark",
+    }
     for a in apps:
         a.calc_days = None
         a.calc_price = None
@@ -733,6 +795,12 @@ def rental_manage(request):
         elif a.order_type == RentalApplication.OrderType.PURCHASE:
             price_buy = getattr(a.product, "price_buy", 0) or 0
             a.calc_price = price_buy * (a.quantity or 1)
+        s = str(getattr(a, "status", "")).upper()
+        a.status_code = s
+        a.status_label = STATUS_LABELS.get(s, s)
+        a.badge_class = BADGE_CLASS.get(s, "secondary")
+        a.display_message = _strip_return_tracking_line(getattr(a, "message", ""))
+        a.display_message = _strip_return_tracking_line(getattr(a, "message", ""))
     ctx = {
         "applications": apps,
         "active_tab": "received",
@@ -920,7 +988,7 @@ def rental_app_receive(request, app_id):
 
     try:
         _create_notification(
-            getattr(app.owner, "email", ""),
+            app.owner,
             "レンタル開始",
             f"「{getattr(app.product, 'title', '商品')}」のレンタルが開始されました。",
             app.id,
@@ -947,10 +1015,8 @@ def rental_app_return_ship(request, app_id):
         messages.error(request, "返却の追跡番号を入力してください。")
         return redirect("frontend:my_applications")
 
-    if hasattr(app, "return_tracking_number"):
-        app.return_tracking_number = tracking
-    else:
-        app.message = ((app.message or "") + f"\n[返却追跡番号] {tracking}").strip()
+    app.return_tracking_number = tracking
+    app.message = _strip_return_tracking_line(getattr(app, "message", ""))
 
     app.status = "return_shipped"
     if hasattr(app, "shipped_date_return"):
@@ -959,7 +1025,7 @@ def rental_app_return_ship(request, app_id):
 
     try:
         _create_notification(
-            getattr(app.owner, "email", ""),
+            app.owner,
             "返却発送のお知らせ",
             f"「{getattr(app.product, 'title', '商品')}」が返却のため発送されました。",
             app.id,
@@ -993,7 +1059,7 @@ def rental_app_confirm_return(request, app_id):
 
     try:
         _create_notification(
-            getattr(app.renter, "email", ""),
+            app.renter,
             "レンタル完了",
             f"「{getattr(app.product, 'title', '商品')}」のレンタルが完了しました。",
             app.id,
@@ -1001,7 +1067,7 @@ def rental_app_confirm_return(request, app_id):
             kind="rental",
         )
         _create_notification(
-            getattr(app.owner, "email", ""),
+            app.owner,
             "レンタル完了",
             f"「{getattr(app.product, 'title', '商品')}」のレンタルが完了しました。",
             app.id,
@@ -1021,7 +1087,7 @@ def rental_app_confirm_return(request, app_id):
 def rental_finish(request, rental_id):
     r = get_object_or_404(Rental, id=rental_id)
     if r.product.owner != request.user:
-        return redirect("error_403")
+        return redirect("frontend:error_403")
 
     r.status = Rental.Status.COMPLETED.value  # => "完了"
     r.completed_date = timezone.now()
@@ -1034,7 +1100,7 @@ def rental_finish(request, rental_id):
 def purchase_receive_done(request, purchase_id):
     p = get_object_or_404(Purchase, id=purchase_id)
     if p.buyer != request.user:
-        return redirect("error_403")
+        return redirect("frontend:error_403")
 
     p.status = Purchase.Status.COMPLETED.value  # => "完了"
     p.completed_date = timezone.now()
@@ -1097,7 +1163,7 @@ def return_action(request):
             purchase.return_requested_at = timezone.now()
             purchase.save(update_fields=["return_status", "return_reason", "return_requested_at"])
 
-            _create_notification(getattr(purchase.product.owner, "email", ""),
+            _create_notification(purchase.product.owner,
                 "返品申請が届きました",
                 f"「{purchase.product_title or purchase.product.title}」の返品が申請されました。",
                 purchase.id, "frontend:returns", kind="purchase")
@@ -1114,7 +1180,7 @@ def return_action(request):
             purchase.return_approved_at = timezone.now()
             purchase.save(update_fields=["return_status", "return_approved_at"])
 
-            _create_notification(getattr(purchase.buyer, "email", ""),
+            _create_notification(purchase.buyer,
                 "返品が承諾されました",
                 "返送の準備ができました。追跡番号を入力してください。",
                 purchase.id, "frontend:returns", kind="purchase")
@@ -1130,7 +1196,7 @@ def return_action(request):
             purchase.return_status = "REJECTED"
             purchase.save(update_fields=["return_status"])
 
-            _create_notification(getattr(purchase.buyer, "email", ""),
+            _create_notification(purchase.buyer,
                 "返品申請が却下されました",
                 "返品申請は却下されました。",
                 purchase.id, "frontend:returns", kind="purchase")
@@ -1150,7 +1216,7 @@ def return_action(request):
             purchase.return_shipped_at = timezone.now()
             purchase.save(update_fields=["return_status", "return_tracking_number", "return_shipped_at"])
 
-            _create_notification(getattr(purchase.product.owner, "email", ""),
+            _create_notification(purchase.product.owner,
                 "返品が返送されました",
                 f"追跡番号: {tracking}",
                 purchase.id, "frontend:returns", kind="purchase")
@@ -1198,7 +1264,7 @@ def return_action(request):
             purchase.return_received_at = timezone.now()
             purchase.save(update_fields=["return_status", "return_received_at"])
 
-            _create_notification(getattr(purchase.buyer, "email", ""),
+            _create_notification(purchase.buyer,
                 "返品の受領が完了しました",
                 "返品の受領が完了しました。",
                 purchase.id, "frontend:returns", kind="purchase")
@@ -1285,10 +1351,8 @@ def rental_app_return_ship(request, app_id):
         messages.error(request, "返却の追跡番号を入力してください。")
         return redirect("frontend:my_applications")
 
-    if hasattr(app, "return_tracking_number"):
-        app.return_tracking_number = tracking
-    else:
-        app.message = ((app.message or "") + f"\n[返却追跡番号] {tracking}").strip()
+    app.return_tracking_number = tracking
+    app.message = _strip_return_tracking_line(getattr(app, "message", ""))
 
     app.status = RentalApplication.Status.RETURN_SHIPPED
     if hasattr(app, "shipped_date_return"):
@@ -1376,7 +1440,18 @@ def rental_apply(request, pk):
 
         with transaction.atomic():
             _adjust_available_quantity(product, -(quantity or 0))
-            Purchase.objects.create(**create_kwargs)
+            purchase = Purchase.objects.create(**create_kwargs)
+        try:
+            _create_notification(
+                product.owner,
+                "購入申請が届きました",
+                f"「{getattr(product, 'title', '商品')}」の購入申請が届きました。",
+                getattr(purchase, "id", None),
+                "frontend:purchases",
+                kind="purchase",
+            )
+        except Exception:
+            pass
         messages.success(request, "購入申請を送信しました。")
         return redirect("frontend:purchases")
 
@@ -1403,7 +1478,7 @@ def rental_apply(request, pk):
 
         with transaction.atomic():
             _adjust_available_quantity(product, -(quantity or 0))
-            RentalApplication.objects.create(
+            app = RentalApplication.objects.create(
                 product=product,
                 owner=product.owner,
                 renter=request.user,
@@ -1416,6 +1491,17 @@ def rental_apply(request, pk):
                 payment_method=payment_method,
                 message=message_txt,
             )
+        try:
+            _create_notification(
+                product.owner,
+                "レンタル申請が届きました",
+                f"「{getattr(product, 'title', '商品')}」のレンタル申請が届きました。",
+                getattr(app, "id", None),
+                "frontend:rental_manage",
+                kind="rental",
+            )
+        except Exception:
+            pass
         messages.success(request, "申請を送信しました。オーナーの承認をお待ちください。")
         return redirect("frontend:product_detail", pk=pk)
 
@@ -1458,8 +1544,17 @@ def product_create(request):
         image_sub3 = request.FILES.get("image_sub3")
 
         errors = []
+        missing_images = []
         if not image_main:
-            errors.append("メイン画像をアップロードしてください。")
+            missing_images.append("メイン画像")
+        if not image_sub1:
+            missing_images.append("サブ画像1")
+        if not image_sub2:
+            missing_images.append("サブ画像2")
+        if not image_sub3:
+            missing_images.append("サブ画像3")
+        if missing_images:
+            errors.append("画像は4枚すべて必須です。({})をアップロードしてください。".format(" / ".join(missing_images)))
         if not title:
             errors.append("商品名を入力してください。")
         if not description:
@@ -1686,8 +1781,45 @@ def profile(request):
                     .order_by("-created_at"))
     
     elif active_tab == "rentals":
-        # 必要ならレンタル中の一覧をここで詰める（今は空のままでも可）
-        renting_products = []
+        renting_items = []
+        app_qs = (
+            RentalApplication.objects
+            .filter(order_type=RentalApplication.OrderType.RENTAL)
+            .filter(status__iexact="renting")
+            .filter(renter=user)
+            .select_related("product", "product__owner")
+            .prefetch_related(Prefetch("product__images", queryset=ProductImage.objects.order_by("id")))
+        )
+        rental_qs = (
+            Rental.objects
+            .filter(status=Rental.Status.RENTING.value)
+            .filter(renter=user)
+            .select_related("product", "product__owner")
+            .prefetch_related(Prefetch("product__images", queryset=ProductImage.objects.order_by("id")))
+        )
+        for app in app_qs:
+            if app.product:
+                renting_items.append({
+                    "product": app.product,
+                    "start_date": app.start_date,
+                    "end_date": app.end_date,
+                    "quantity": app.quantity or 1,
+                    "started_at": app.created_at,
+                })
+        for r in rental_qs:
+            if r.product:
+                renting_items.append({
+                    "product": r.product,
+                    "start_date": r.start_date,
+                    "end_date": r.end_date,
+                    "quantity": r.quantity or 1,
+                    "started_at": r.rental_start_date or r.received_date_by_renter or r.created_at,
+                })
+        renting_items.sort(
+            key=lambda x: x["started_at"] or timezone.now(),
+            reverse=True,
+        )
+        renting_products = renting_items
     elif active_tab == "history":
         # ▼ ここが肝。完了したレンタル/購入を混在で集約
         rentals = (
@@ -1704,6 +1836,14 @@ def profile(request):
             .select_related("product", "product__owner")
             .prefetch_related(Prefetch("product__images", queryset=ProductImage.objects.order_by("id")))
         )
+        rental_apps = (
+            RentalApplication.objects
+            .filter(order_type=RentalApplication.OrderType.RENTAL)
+            .filter(status=RentalApplication.Status.COMPLETED)
+            .filter(Q(renter=user) | Q(owner=user))
+            .select_related("product", "product__owner")
+            .prefetch_related(Prefetch("product__images", queryset=ProductImage.objects.order_by("id")))
+        )
 
         items = []
         for r in rentals:
@@ -1712,6 +1852,13 @@ def profile(request):
                     "kind": "rental",
                     "completed_at": r.completed_date or r.returned_date or r.created_at,
                     "product": r.product,
+                })
+        for app in rental_apps:
+            if app.product:
+                items.append({
+                    "kind": "rental",
+                    "completed_at": getattr(app, "completed_date", None) or app.created_at,
+                    "product": app.product,
                 })
         for p in purchases:
             if p.product:
@@ -1844,6 +1991,35 @@ def contact_api(request):
 
     # ここでメール送信等（省略）
     return JsonResponse({"ok": True})
+
+
+# ========= 通知 =========
+
+@login_required
+def my_notifications(request):
+    items = []
+    unread_ids = []
+    if Notification is None:
+        return render(request, "frontend/my_notifications.html", {
+            "object_list": items,
+            "unread_ids": set(),
+        })
+    try:
+        items = list(
+            Notification.objects
+            .filter(user=request.user)
+            .order_by("-created_at")
+        )
+        unread_ids = [n.id for n in items if getattr(n, "read_at", None) is None]
+        if unread_ids:
+            Notification.objects.filter(id__in=unread_ids).update(read_at=timezone.now())
+    except Exception:
+        items = []
+        unread_ids = []
+    return render(request, "frontend/my_notifications.html", {
+        "object_list": items,
+        "unread_ids": set(unread_ids),
+    })
 
 
 # ========= 管理系 =========
@@ -2056,3 +2232,11 @@ def shipping_update(request):
 
 def error_403(request, exception=None):
     return render(request, "403.html", status=403)
+
+
+def error_404(request, exception=None):
+    return render(request, "404.html", status=404)
+
+
+def error_500(request):
+    return render(request, "500.html", status=500)

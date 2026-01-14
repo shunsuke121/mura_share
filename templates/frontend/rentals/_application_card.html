@@ -1,0 +1,139 @@
+{% load humanize %}
+<div class="card border-0 shadow-sm">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-start gap-3">
+      <div class="d-flex align-items-center gap-3 flex-grow-1">
+        <a class="flex-shrink-0" href="{% url 'frontend:product_detail' a.product_id %}">
+          <div class="bg-light rounded-2 overflow-hidden" style="width:64px;height:64px;">
+            {% if a.product.image_url %}
+              <img src="{{ a.product.image_url }}" class="w-100 h-100" style="object-fit:cover;" alt="{{ a.product.title }}">
+            {% else %}
+              <div class="w-100 h-100 d-flex align-items-center justify-content-center small text-muted">No Image</div>
+            {% endif %}
+          </div>
+        </a>
+        <div class="fw-semibold">
+          <a class="text-decoration-none text-dark" href="{% url 'frontend:product_detail' a.product_id %}">
+            {{ a.product.title }}
+          </a>
+        </div>
+      </div>
+      <div class="text-end">
+        {% if a.calc_price %}
+          <div class="fs-5 fw-bold">¥{{ a.calc_price|intcomma }}</div>
+        {% endif %}
+        {% if a.calc_days %}
+          <div class="text-muted small">{{ a.calc_days }}日間</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+      <span class="badge bg-light text-dark">{{ a.get_order_type_display|default:a.order_type }}</span>
+      {% if a.payment_method %}
+        <span class="badge bg-light text-dark">{{ a.get_payment_method_display|default:a.payment_method }}</span>
+      {% endif %}
+      <span class="badge bg-light text-dark">{{ a.quantity|default:1 }}点</span>
+      <span class="badge bg-{{ a.badge_class|default:'secondary' }}">
+        {{ a.status_label|default:a.get_status_display|default:a.status }}
+      </span>
+    </div>
+
+    <div class="row g-3 mt-3">
+      <div class="col-md-6 small">
+        <div class="mb-1">
+          <span class="text-muted">開始</span>
+          {% if a.start_date %}{{ a.start_date|date:"Y年n月j日" }}{% else %}-{% endif %}
+        </div>
+        <div>
+          <span class="text-muted">終了</span>
+          {% if a.end_date %}{{ a.end_date|date:"Y年n月j日" }}{% else %}-{% endif %}
+        </div>
+      </div>
+      <div class="col-md-6 small">
+        <div class="mb-1">
+          <span class="text-muted">{% if mode == "received" %}借り手{% else %}オーナー{% endif %}</span>
+          {% if mode == "received" %}
+            {{ a.renter.email|default:a.renter.username }}
+          {% else %}
+            {{ a.owner.email|default:a.owner.username }}
+          {% endif %}
+        </div>
+        {% if a.display_message %}
+          <div class="text-muted">メッセージ:</div>
+          <div class="border rounded-2 p-2 bg-light">{{ a.display_message }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mt-3 align-items-stretch">
+      {% with s=a.status|lower %}
+        {% if mode == "received" %}
+          {% if s == "pending" %}
+            <div class="d-flex gap-2 flex-wrap flex-grow-1">
+              <form method="post" action="{% url 'frontend:rental_app_approve' a.id %}" class="m-0 flex-grow-1">
+                {% csrf_token %}
+                <button class="btn btn-primary w-100">承認する</button>
+              </form>
+              <form method="post" action="{% url 'frontend:rental_app_reject' a.id %}" class="m-0 flex-grow-1">
+                {% csrf_token %}
+                <button class="btn btn-outline-danger w-100">却下する</button>
+              </form>
+            </div>
+
+          {% elif s == "approved" %}
+            <form method="post" action="{% url 'frontend:rental_app_ship' a.id %}" class="m-0 flex-grow-1 d-flex gap-2 flex-wrap">
+              {% csrf_token %}
+              <input type="text" name="tracking_number" class="form-control flex-grow-1" placeholder="追跡番号">
+              <button class="btn btn-primary">配送する</button>
+            </form>
+
+          {% elif s == "shipped" %}
+            <div class="flex-grow-1 small text-muted d-flex align-items-center">
+              配送済み・追跡番号:
+              <strong class="ms-1">{{ a.tracking_number|default:"-" }}</strong>
+            </div>
+
+          {% elif s == "return_shipped" %}
+            <form method="post" action="{% url 'frontend:rental_app_confirm_return' a.id %}" class="m-0 flex-grow-1">
+              {% csrf_token %}
+              <button class="btn btn-primary w-100">レンタル終了</button>
+            </form>
+
+          {% else %}
+            <div class="flex-grow-1 small text-muted d-flex align-items-center">
+              この申請は<strong class="ms-1">{{ a.status_label|default:a.get_status_display|default:a.status }}</strong>です。
+            </div>
+          {% endif %}
+        {% else %}
+          {% if s == "shipped" %}
+            <form method="post" action="{% url 'frontend:rental_app_receive' a.id %}" class="m-0 flex-grow-1">
+              {% csrf_token %}
+              <button class="btn btn-primary w-100">レンタル開始</button>
+            </form>
+
+          {% elif s == "received" or s == "renting" %}
+            <form method="post" action="{% url 'frontend:rental_app_return_ship' a.id %}" class="m-0 flex-grow-1 d-flex gap-2 flex-wrap">
+              {% csrf_token %}
+              <input type="text" name="return_tracking_number" class="form-control flex-grow-1" placeholder="返却の追跡番号">
+              <button class="btn btn-primary">返却する</button>
+            </form>
+
+          {% else %}
+            <form method="post" action="{% url 'frontend:rental_app_cancel' a.id %}" class="m-0 flex-grow-1">
+              {% csrf_token %}
+              <button class="btn btn-outline-danger w-100" {% if s != "pending" and s != "approved" %}disabled{% endif %}>
+                キャンセル
+              </button>
+            </form>
+          {% endif %}
+        {% endif %}
+      {% endwith %}
+    </div>
+
+    {% if a.return_tracking_number %}
+      <div class="text-muted small mt-2">返却追跡番号: {{ a.return_tracking_number }}</div>
+    {% endif %}
+    <div class="text-muted small mt-2">申請日: {{ a.created_at|date:"Y年n月j日 H:i" }}</div>
+  </div>
+</div>

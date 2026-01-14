@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}ページが見つかりません (404){% endblock %}
+{% block content %}
+<div class="container py-5" style="max-width:720px;">
+  <div class="text-center">
+    <div class="display-1 fw-bold text-secondary">404</div>
+    <h1 class="h4 mb-3">ページが見つかりません</h1>
+    <p class="text-muted mb-4">URLが間違っているか、ページが削除された可能性があります。</p>
+    <a href="{% url 'frontend:products' %}" class="btn btn-dark">トップへ戻る</a>
+  </div>
+</div>
+{% endblock %}

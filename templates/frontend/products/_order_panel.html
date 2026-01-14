@@ -46,9 +46,12 @@
       </div>
 
       <label class="block text-sm mb-1">配送先住所 *</label>
-      <input type="text" name="postal_code" placeholder="郵便番号（ハイフンなし）" class="w-full mb-2"
+      <input type="text" name="postal_code" id="postal_code" placeholder="郵便番号（ハイフンなし）" class="w-full mb-2"
+             inputmode="numeric" autocomplete="postal-code"
              style="border:1px solid #e5e7eb;padding:.5rem;border-radius:.5rem;">
-      <textarea name="address" rows="2" placeholder="住所" class="w-full mb-3"
+      <div id="postal_help" class="text-xs text-gray-500 mb-2">郵便番号を入力すると住所が自動入力されます。</div>
+      <textarea name="address" id="address" rows="2" placeholder="住所" class="w-full mb-3"
+                autocomplete="street-address"
                 style="border:1px solid #e5e7eb;padding:.5rem;border-radius:.5rem;"></textarea>
 
       <label class="block text-sm mb-1">決済方法 *</label>
@@ -100,5 +103,69 @@
 
   if (allowRental) setMode('rental');
   else if (allowPurchase) setMode('purchase');
+})();
+</script>
+
+<script>
+(function(){
+  const zipInput = document.getElementById('postal_code');
+  const addrInput = document.getElementById('address');
+  const help = document.getElementById('postal_help');
+  if (!zipInput || !addrInput) return;
+
+  let lastZip = "";
+  let controller = null;
+
+  function setHelp(message, isError){
+    if (!help) return;
+    help.textContent = message;
+    help.classList.toggle("text-red-600", !!isError);
+    help.classList.toggle("text-gray-500", !isError);
+  }
+
+  function normalizeZip(value){
+    return (value || "").replace(/[^0-9]/g, "");
+  }
+
+  async function lookup(zip){
+    if (zip.length !== 7 || zip === lastZip) return;
+    lastZip = zip;
+    if (controller) controller.abort();
+    controller = new AbortController();
+    try {
+      setHelp("住所を取得中...", false);
+      const res = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${zip}`, {
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error("fetch_failed");
+      const data = await res.json();
+      if (!data || data.status !== 200 || !data.results || !data.results.length) {
+        setHelp("該当する住所が見つかりませんでした。", true);
+        return;
+      }
+      const r = data.results[0];
+      const address = `${r.address1 || ""}${r.address2 || ""}${r.address3 || ""}`;
+      if (address) {
+        addrInput.value = address;
+        setHelp("住所を自動入力しました。", false);
+      }
+    } catch (err) {
+      if (err.name === "AbortError") return;
+      setHelp("住所の取得に失敗しました。", true);
+    }
+  }
+
+  zipInput.addEventListener("input", () => {
+    const zip = normalizeZip(zipInput.value);
+    if (zip.length === 7) {
+      lookup(zip);
+    } else {
+      setHelp("郵便番号を入力すると住所が自動入力されます。", false);
+    }
+  });
+  zipInput.addEventListener("blur", () => {
+    const zip = normalizeZip(zipInput.value);
+    if (zip.length === 7) lookup(zip);
+  });
 })();
 </script>

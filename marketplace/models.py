@@ -320,6 +320,7 @@ class RentalApplication(models.Model):
 
     # ★ 承認後に入力する「追跡番号」
     tracking_number = models.CharField(max_length=50, blank=True, default="")
+    return_tracking_number = models.CharField(max_length=100, blank=True, default="")
 
     status     = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     created_at = models.DateTimeField(auto_now_add=True)

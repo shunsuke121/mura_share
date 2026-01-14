@@ -40,6 +40,7 @@ urlpatterns = [
 
 
     path("messages/",  views.MessagesPage.as_view(),     name="messages"),
+    path("notifications/", views.my_notifications, name="notifications"),
     path("profile/", views.profile, name="profile"),
 
     path("docs/",      views.DocumentationView.as_view(),name="docs"),
@@ -49,6 +50,7 @@ urlpatterns = [
     path("login/",  auth_views.LoginView.as_view(template_name="registration/login.html"), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("signup/", views.signup, name="signup"),
+    path("error/403/", views.error_403, name="error_403"),
 
     # 申請
     path("products/<int:pk>/apply/", views.rental_apply, name="rental_apply"),

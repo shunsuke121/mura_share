@@ -67,9 +67,20 @@ body {
   border-right: 1px solid #e5e7eb;  /* 右に薄いボーダー */
 }
 
+@media (min-width: 992px) {
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    align-self: flex-start;
+    overflow: hidden;
+  }
+}
+
 .sidebar-nav {
   font-size: 0.9rem;
   height: 100%;
+  min-height: 0;
 }
 
 .sidebar-nav-header {
@@ -106,6 +117,8 @@ body {
 
 .sidebar-group {
   padding: 0.25rem 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
 }
 
 .sidebar-group-label {
@@ -159,6 +172,7 @@ body {
 .sidebar-footer {
   border-top: 1px solid #e5e7eb;
   margin-top: 0.5rem;
+  flex-shrink: 0;
 }
 
 .sidebar-avatar {
@@ -293,6 +307,31 @@ body {
   border: 3px solid rgba(148, 163, 184, 0.5);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
 }
+
+.profile-page .nav-tabs{
+  width: 100%;
+  justify-content: space-between;
+}
+.profile-page .nav-tabs .nav-item{
+  flex: 1 1 auto;
+}
+.profile-page .nav-tabs .nav-link{
+  width: 100%;
+  text-align: center;
+}
+
+.profile-history .trade-badge{
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: .15rem .45rem;
+  border-radius: .35rem;
+  font-size: .75rem;
+  line-height: 1;
+  z-index: 2;
+}
+.profile-history .trade-badge--rental{ background:#0d6efd; color:#fff; }
+.profile-history .trade-badge--purchase{ background:#198754; color:#fff; }
 
 /* 入力まわりを全部白ベースにリセット */
 
@@ -643,6 +682,40 @@ textarea.form-control {
 
 .ms-icon-btn:hover {
   background: #f3f4f6;
+}
+
+.ms-icon-btn.dropdown-toggle::after {
+  display: none;
+}
+
+.notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
+}
+
+.notif-dropdown {
+  width: 320px;
+  max-width: 90vw;
+}
+
+.notif-dropdown .dropdown-item {
+  white-space: normal;
+}
+
+.notif-body {
+  color: #111827;
 }
 
 .ms-avatar {

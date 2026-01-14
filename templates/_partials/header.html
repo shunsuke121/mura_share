@@ -33,15 +33,46 @@
 
     <!-- 右：通知＆アバター -->
     <div class="ms-header-right d-flex align-items-center gap-3">
-      <a href="#" class="ms-icon-btn" aria-label="通知">
-        <i class="bi bi-bell"></i>
-      </a>
-
       {% if request.user.is_authenticated %}
+        <div class="dropdown">
+          <a href="#"
+             class="ms-icon-btn position-relative dropdown-toggle"
+             id="notifDropdown"
+             data-bs-toggle="dropdown"
+             aria-expanded="false"
+             role="button"
+             aria-label="通知">
+            <i class="bi bi-bell"></i>
+            {% if notifications_unread_count %}
+              <span class="notif-badge">{{ notifications_unread_count }}</span>
+            {% endif %}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end notif-dropdown" aria-labelledby="notifDropdown">
+            <li class="dropdown-header">通知</li>
+            {% if notifications_recent %}
+              {% for n in notifications_recent %}
+                <li>
+                  <a class="dropdown-item" href="{% url 'frontend:notifications' %}">
+                    <div class="small text-muted">{{ n.created_at|date:"m/d H:i" }}</div>
+                    <div class="notif-body {% if not n.read_at %}fw-bold{% endif %}">{{ n.body }}</div>
+                  </a>
+                </li>
+              {% endfor %}
+            {% else %}
+              <li><span class="dropdown-item-text text-muted">通知はまだありません。</span></li>
+            {% endif %}
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-center" href="{% url 'frontend:notifications' %}">通知一覧を見る</a></li>
+          </ul>
+        </div>
+
         <div class="ms-avatar" title="{{ request.user.username }}">
           {{ request.user.username|first|default:"U"|upper }}
         </div>
       {% else %}
+        <a href="{% url 'frontend:login' %}" class="ms-icon-btn" aria-label="通知">
+          <i class="bi bi-bell"></i>
+        </a>
         <a class="btn btn-sm btn-outline-secondary" href="{% url 'frontend:login' %}">
           ログイン
         </a>

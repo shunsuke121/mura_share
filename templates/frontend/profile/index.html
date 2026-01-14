@@ -2,7 +2,7 @@
 {% block title %}プロフィール - MURAシェア{% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<div class="container-xxl py-4 profile-page">
 
   {% if messages %}
     <div class="mb-3">
@@ -14,39 +14,43 @@
 
   {# ヘッダー部分（共通） #}
   <div class="card shadow-sm mb-4 border-0 profile-header-card">
-    <div class="card-body d-flex align-items-center">
-      <div class="position-relative me-4">
-        <img
-          src="{% if profile.profile_image %}{{ profile.profile_image.url }}{% else %}/static/img/default_user.png{% endif %}"
-          class="rounded-circle" width="120" height="120" alt="プロフィール画像">
-      </div>
-      <div class="flex-grow-1">
-        <h4 class="mb-1">{{ profile.display_name|default:user_obj.username }}</h4>
-        <p class="text-muted mb-1">{{ user_obj.email }}</p>
-        <div>
-          <span class="badge bg-warning text-dark">評価: 5.0</span>
-          <span class="badge bg-primary">レンタル中</span>
-          {% if request.user.is_staff or profile.is_admin %}
-            <span class="badge bg-dark rounded-pill">管理者</span>
+    <div class="card-body">
+      <div class="d-flex flex-column flex-md-row align-items-md-center gap-3">
+        <div class="position-relative">
+          <img
+            src="{% if profile.profile_image %}{{ profile.profile_image.url }}{% else %}/static/img/default_user.png{% endif %}"
+            class="rounded-circle" width="96" height="96" alt="プロフィール画像">
+        </div>
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <h4 class="mb-0">{{ profile.display_name|default:user_obj.username }}</h4>
+            {% if request.user.is_staff or profile.is_admin %}
+              <span class="badge bg-dark rounded-pill">管理者</span>
+            {% else %}
+              <span class="badge bg-secondary-subtle text-secondary rounded-pill">一般ユーザー</span>
+            {% endif %}
+          </div>
+          <div class="text-muted small mt-1">{{ user_obj.email }}</div>
+          <div class="d-flex flex-wrap gap-2 mt-2">
+            <span class="badge bg-warning text-dark">評価: 5.0</span>
+            <span class="badge bg-primary">レンタル中</span>
+          </div>
+        </div>
+        <div class="ms-md-auto">
+          {% if editing %}
+            <a href="{% url 'frontend:profile' %}" class="btn btn-outline-secondary">キャンセル</a>
           {% else %}
-            <span class="badge bg-secondary-subtle text-secondary rounded-pill">一般ユーザー</span>
+            <a href="{% url 'frontend:profile' %}?edit=1" class="btn btn-outline-dark">
+              <i class="bi bi-pencil-square"></i> 編集
+            </a>
           {% endif %}
         </div>
-      </div>
-      <div>
-        {% if editing %}
-          <a href="{% url 'frontend:profile' %}" class="btn btn-outline-secondary">キャンセル</a>
-        {% else %}
-          <a href="{% url 'frontend:profile' %}?edit=1" class="btn btn-outline-dark">
-            <i class="bi bi-pencil-square"></i> 編集
-          </a>
-        {% endif %}
       </div>
     </div>
   </div>
 
   {# タブ：ここをリンク + active_tab 判定にする #}
-  <ul class="nav nav-tabs mb-4">
+  <ul class="nav nav-tabs mb-4 flex-wrap">
     <li class="nav-item">
       <a class="nav-link {% if active_tab == 'info' %}active{% endif %}"
          href="{% url 'frontend:profile' %}?tab=info">
@@ -91,94 +95,98 @@
           <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
 
-            <div class="mb-3">
-              <label class="form-label text-muted">プロフィール画像</label>
-              <input type="file" name="profile_image" class="form-control">
-            </div>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label text-muted">プロフィール画像</label>
+                <input type="file" name="profile_image" class="form-control">
+              </div>
 
-            <div class="mb-3">
-              <label class="form-label text-muted">
-                <i class="bi bi-person me-2"></i>表示名
-              </label>
-              <input
-                type="text"
-                name="display_name"
-                class="form-control"
-                value="{{ profile.display_name|default:user_obj.username }}"
-                placeholder="山田 太郎"
-              >
-            </div>
+              <div class="col-md-6">
+                <label class="form-label text-muted">
+                  <i class="bi bi-person me-2"></i>表示名
+                </label>
+                <input
+                  type="text"
+                  name="display_name"
+                  class="form-control"
+                  value="{{ profile.display_name|default:user_obj.username }}"
+                  placeholder="山田 太郎"
+                >
+              </div>
 
-            <div class="mb-3">
-              <label class="form-label text-muted">
-                <i class="bi bi-telephone me-2"></i>電話番号
-              </label>
-              <input
-                type="text"
-                name="phone"
-                class="form-control"
-                value="{{ profile.phone }}"
-                placeholder="090-1234-5678"
-              >
-            </div>
+              <div class="col-md-6">
+                <label class="form-label text-muted">
+                  <i class="bi bi-telephone me-2"></i>電話番号
+                </label>
+                <input
+                  type="text"
+                  name="phone"
+                  class="form-control"
+                  value="{{ profile.phone }}"
+                  placeholder="090-1234-5678"
+                >
+              </div>
 
-            <div class="mb-3">
-              <label class="form-label text-muted">
-                <i class="bi bi-geo-alt me-2"></i>住所
-              </label>
-              <input
-                type="text"
-                name="address"
-                class="form-control"
-                value="{{ profile.address }}"
-                placeholder="東京都渋谷区..."
-              >
-            </div>
+              <div class="col-12">
+                <label class="form-label text-muted">
+                  <i class="bi bi-geo-alt me-2"></i>住所
+                </label>
+                <input
+                  type="text"
+                  name="address"
+                  class="form-control"
+                  value="{{ profile.address }}"
+                  placeholder="東京都渋谷区..."
+                >
+              </div>
 
-            <div class="d-flex gap-2">
-              <button type="submit" class="btn btn-primary">
-                保存
-              </button>
-              <a href="{% url 'frontend:profile' %}" class="btn btn-outline-secondary">
-                キャンセル
-              </a>
+              <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                  保存
+                </button>
+                <a href="{% url 'frontend:profile' %}" class="btn btn-outline-secondary">
+                  キャンセル
+                </a>
+              </div>
             </div>
           </form>
 
         {% else %}
-          <div class="mb-3">
-            <label class="form-label text-muted">
-              <i class="bi bi-person me-2"></i>表示名
-            </label>
-            <div class="p-2 bg-light rounded">
-              {{ profile.display_name|default:user_obj.username }}
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="p-3 bg-light border rounded-3 h-100">
+                <div class="text-muted small mb-1">
+                  <i class="bi bi-person me-2"></i>表示名
+                </div>
+                <div class="fw-semibold">{{ profile.display_name|default:user_obj.username }}</div>
+              </div>
             </div>
-          </div>
 
-          <div class="mb-3">
-            <label class="form-label text-muted">
-              <i class="bi bi-envelope me-2"></i>メールアドレス
-            </label>
-            <div class="p-2 bg-light rounded">
-              {{ user_obj.email }}
+            <div class="col-md-6">
+              <div class="p-3 bg-light border rounded-3 h-100">
+                <div class="text-muted small mb-1">
+                  <i class="bi bi-envelope me-2"></i>メールアドレス
+                </div>
+                <div class="fw-semibold">{{ user_obj.email }}</div>
+              </div>
             </div>
-          </div>
 
-          <div class="mb-3">
-            <label class="form-label text-muted">
-              <i class="bi bi-telephone me-2"></i>電話番号
-            </label>
-            <div class="p-2 bg-light rounded">
-              {{ profile.phone|default:"未登録" }}
+            <div class="col-md-6">
+              <div class="p-3 bg-light border rounded-3 h-100">
+                <div class="text-muted small mb-1">
+                  <i class="bi bi-telephone me-2"></i>電話番号
+                </div>
+                <div class="fw-semibold">{{ profile.phone|default:"未登録" }}</div>
+              </div>
             </div>
-          </div>
 
-          <div class="mb-3">
-            <label class="form-label text-muted">
-              <i class="bi bi-geo-alt me-2"></i>住所
-            </label>
-            <div class="p-2 bg-light rounded">
-              {{ profile.address|default:"未登録" }}
+            <div class="col-12">
+              <div class="p-3 bg-light border rounded-3">
+                <div class="text-muted small mb-1">
+                  <i class="bi bi-geo-alt me-2"></i>住所
+                </div>
+                <div class="fw-semibold">{{ profile.address|default:"未登録" }}</div>
+              </div>
             </div>
           </div>
         {% endif %}
@@ -363,7 +371,51 @@
     <div class="card-body">
       <h5 class="mb-3">レンタル中</h5>
       {% if renting_products %}
-        {# TODO: 実装時に表示 #}
+        <div class="vstack gap-3">
+          {% for item in renting_products %}
+            {% with p=item.product %}
+              {% if p %}
+              <div class="card mypost-card mb-0">
+                <div class="card-body">
+                  <div class="d-flex align-items-start gap-3">
+                    <a href="{% url 'frontend:product_detail' p.pk %}"
+                       class="flex-shrink-0"
+                       style="width:140px;height:90px;overflow:hidden;border-radius:.5rem;">
+                      {% with first=p.images.all|first %}
+                        {% if first and first.image %}
+                          <img src="{{ first.image.url }}" class="w-100 h-100" style="object-fit:cover;" alt="">
+                        {% else %}
+                          <div class="bg-light w-100 h-100 d-flex align-items-center justify-content-center text-muted">No Image</div>
+                        {% endif %}
+                      {% endwith %}
+                    </a>
+
+                    <div class="flex-grow-1">
+                      <div class="d-flex justify-content-between align-items-start">
+                        <h5 class="mb-1">
+                          <a class="text-decoration-none text-dark" href="{% url 'frontend:product_detail' p.pk %}">
+                            {{ p.title }}
+                          </a>
+                        </h5>
+                        <span class="badge bg-primary">レンタル中</span>
+                      </div>
+
+                      <div class="text-muted small">
+                        {% if item.start_date and item.end_date %}
+                          期間: {{ item.start_date|date:"Y年n月j日" }} 〜 {{ item.end_date|date:"Y年n月j日" }}
+                        {% elif item.start_date %}
+                          開始: {{ item.start_date|date:"Y年n月j日" }}
+                        {% endif %}
+                        <span class="ms-2">数量: {{ item.quantity|default:1 }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+            {% endwith %}
+          {% endfor %}
+        </div>
       {% else %}
         <div class="text-center text-muted py-4">
           <i class="bi bi-box fs-1 d-block mb-2"></i>
@@ -376,17 +428,6 @@
 
  {# 取引履歴 #}
 {% if active_tab == "history" %}
-  <style>
-    /* 履歴カード上の「レンタル / 購入」バッジ */
-    .profile-history .trade-badge{
-      position:absolute; top:6px; left:6px;
-      padding:.15rem .45rem; border-radius:.35rem;
-      font-size:.75rem; line-height:1; z-index:2;
-    }
-    .profile-history .trade-badge--rental{ background:#0d6efd; color:#fff; }
-    .profile-history .trade-badge--purchase{ background:#198754; color:#fff; }
-  </style>
-
   <div class="card border-0 shadow-sm">
     <div class="card-body">
       <h5 class="mb-3">取引履歴{% if transactions %} ({{ transactions|length }}){% endif %}</h5>
