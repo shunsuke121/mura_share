@@ -91,7 +91,9 @@
                     aria-pressed="{% if p.is_favorited %}true{% else %}false{% endif %}">
               <i data-icon="heart" class="bi {% if p.is_favorited %}bi-heart-fill text-danger{% else %}bi-heart{% endif %}"></i>
             </button>
-            <i class="bi bi-chat"></i>
+            <a href="{% url 'chat:start_chat' p.id %}" class="pc-chat" aria-label="出品者とチャット">
+              <i class="bi bi-chat"></i>
+            </a>
           </div>
           {% if p.is_sold_out %}
             <div class="pc-meta text-danger fw-semibold">sold out</div>
