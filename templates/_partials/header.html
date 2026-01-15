@@ -3,11 +3,21 @@
   <div class="ms-header-inner">
 
     <!-- 左：ロゴ -->
-    <a class="ms-brand d-flex align-items-center text-decoration-none"
-       href="{% url 'frontend:products' %}">
-      <span class="ms-brand-badge">M</span>
-      <span class="ms-brand-text">MURAシェア</span>
-    </a>
+    <div class="ms-header-left">
+      <button type="button"
+              class="ms-icon-btn ms-menu-btn d-lg-none"
+              data-bs-toggle="offcanvas"
+              data-bs-target="#offcanvasSidebar"
+              aria-controls="offcanvasSidebar"
+              aria-label="メニュー">
+        <i class="bi bi-list"></i>
+      </button>
+      <a class="ms-brand d-flex align-items-center text-decoration-none"
+         href="{% url 'frontend:products' %}">
+        <span class="ms-brand-badge">M</span>
+        <span class="ms-brand-text">MURAシェア</span>
+      </a>
+    </div>
 
     <!-- 真ん中：ナビ -->
     <ul class="ms-nav list-unstyled d-none d-md-flex align-items-center mb-0">

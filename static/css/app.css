@@ -329,6 +329,25 @@ body {
   text-align: center;
 }
 
+@media (max-width: 575.98px) {
+  .profile-page .nav-tabs{
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    gap: 8px;
+    padding-bottom: 4px;
+  }
+
+  .profile-page .nav-tabs .nav-item{
+    flex: 0 0 auto;
+  }
+
+  .profile-page .nav-tabs .nav-link{
+    width: auto;
+    white-space: nowrap;
+  }
+}
+
 .profile-history .trade-badge{
   position: absolute;
   top: 6px;
@@ -621,6 +640,16 @@ textarea.form-control {
   column-gap: 32px;
 }
 
+.ms-header-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ms-menu-btn {
+  flex: 0 0 auto;
+}
+
 /* ロゴ */
 .ms-brand-badge {
   width: 32px;
@@ -725,6 +754,21 @@ textarea.form-control {
 
 .notif-body {
   color: #111827;
+}
+
+@media (max-width: 767.98px) {
+  .ms-header-inner {
+    padding: 8px 12px;
+    column-gap: 12px;
+  }
+
+  .ms-brand-text {
+    font-size: 0.95rem;
+  }
+
+  .ms-header-right {
+    gap: 8px;
+  }
 }
 
 .ms-avatar {
