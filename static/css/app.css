@@ -800,6 +800,99 @@ textarea.form-control {
 .trade-badge--rental { background: #0ea5e9; }   /* 水色 */
 .trade-badge--purchase { background: #22c55e; } /* 緑 */
 
+/* === Rough beginner theme overrides === */
+body {
+  font-family: "Comic Sans MS", "Comic Sans", cursive;
+  background: #f9f9f9;
+  color: #222;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Impact", "Haettenschweiler", "Arial Black", sans-serif;
+  letter-spacing: 0;
+}
+
+a {
+  color: #0a58ca;
+  text-decoration: underline;
+}
+
+a:hover {
+  color: #d63384;
+}
+
+.card,
+.list-group-item {
+  border-radius: 6px !important;
+  border: 2px solid #d1d5db !important;
+  box-shadow: none !important;
+}
+
+.btn {
+  border-radius: 4px !important;
+  box-shadow: none !important;
+  text-transform: none !important;
+}
+
+.btn-primary {
+  background: #ff9800 !important;
+  color: #000 !important;
+  border: 2px solid #000 !important;
+}
+
+.btn-outline-secondary,
+.btn-outline-dark {
+  border: 2px dashed #6b7280 !important;
+  color: #111 !important;
+}
+
+.ms-header,
+.sidebar {
+  background: #fffbe6 !important;
+}
+
+.ms-header .ms-nav-link {
+  color: #111 !important;
+}
+
+.ms-brand-badge {
+  border-radius: 6px !important;
+}
+
+.form-control,
+.form-select,
+textarea.form-control {
+  border: 2px solid #999 !important;
+  box-shadow: none !important;
+}
+
+.badge {
+  border-radius: 4px !important;
+}
+
+.chat-row {
+  border-radius: 6px !important;
+  border: 2px solid #d1d5db !important;
+  box-shadow: none !important;
+}
+
+.chat-row.is-unread {
+  background: #fff0f0 !important;
+  border-color: #fca5a5 !important;
+}
+
+.rentals .segmented,
+.purchases .segmented {
+  box-shadow: none !important;
+  border: 2px solid #bbb !important;
+}
+
+.rentals .seg-btn.active,
+.purchases .seg-btn.active {
+  background: #111 !important;
+  color: #fff !important;
+}
+
 /* === Messages list === */
 .chat-list {
   display: flex;
@@ -893,4 +986,111 @@ textarea.form-control {
     flex-direction: row;
     align-items: center;
   }
+}
+
+/* === Extra rough overrides === */
+body {
+  background: repeating-linear-gradient(
+    45deg,
+    #fefefe,
+    #fefefe 12px,
+    #f6f6f6 12px,
+    #f6f6f6 24px
+  );
+}
+
+.page-inner {
+  padding: 8px 10px;
+}
+
+.ms-header,
+.sidebar {
+  border-bottom: 3px double #111 !important;
+  box-shadow: none !important;
+}
+
+.sidebar {
+  border-right: 3px double #111 !important;
+}
+
+.sidebar-link {
+  border-bottom: 1px dotted #bdbdbd;
+  border-radius: 2px !important;
+}
+
+.ms-nav-link {
+  background: #ffe6f0;
+  border: 1px solid #111;
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+.ms-nav-link.is-active {
+  background: #c7f9cc;
+}
+
+.card,
+.list-group-item,
+.chat-row {
+  background: #fffdf2 !important;
+  outline: 1px dashed #bdbdbd;
+}
+
+.card {
+  transform: rotate(-0.2deg);
+}
+
+.card:nth-child(even) {
+  transform: rotate(0.2deg);
+}
+
+img {
+  border: 1px solid #c5c5c5;
+}
+
+hr {
+  border-top: 2px dashed #999;
+  opacity: 1;
+}
+
+input,
+select,
+textarea {
+  border: 2px dotted #777 !important;
+  border-radius: 2px !important;
+  background: #fff !important;
+}
+
+.badge {
+  border: 1px solid #999 !important;
+}
+
+.btn {
+  font-size: 0.95rem !important;
+  padding: 0.45rem 0.85rem !important;
+}
+
+.btn-primary,
+.btn-outline-secondary,
+.btn-outline-dark {
+  letter-spacing: 0 !important;
+}
+
+/* Fix product card icon alignment */
+.pc-icons {
+  align-items: center;
+}
+
+.pc-icons .fav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  line-height: 1;
+}
+
+.pc-icons .bi {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
 }

@@ -669,10 +669,32 @@ class MessagesPage(LoginRequiredMixin, TemplateView):
             .filter(Q(owner=user) | Q(renter=user))
             .order_by("-created_at")
         )
+        pending_purchase_status = getattr(Purchase.Status, "REQUESTED", None)
+        pending_rental_status = getattr(Rental.Status, "REQUESTED", None)
+        pending_app_status = getattr(RentalApplication.Status, "PENDING", None)
+        if pending_purchase_status:
+            purchases = purchases.filter(status=pending_purchase_status)
+        if pending_rental_status:
+            rentals = rentals.filter(status=pending_rental_status)
+        if pending_app_status:
+            applications = applications.filter(status=pending_app_status)
 
         purchase_ids = list(purchases.values_list("id", flat=True))
         rental_ids = list(rentals.values_list("id", flat=True))
         app_ids = list(applications.values_list("id", flat=True))
+
+        last_body_qs = (
+            ChatMessage.objects
+            .filter(room_id=OuterRef("pk"))
+            .order_by("-created_at")
+            .values("body")[:1]
+        )
+        last_at_qs = (
+            ChatMessage.objects
+            .filter(room_id=OuterRef("pk"))
+            .order_by("-created_at")
+            .values("created_at")[:1]
+        )
 
         room_qs = ChatRoom.objects.select_related(
             "product",
@@ -688,21 +710,9 @@ class MessagesPage(LoginRequiredMixin, TemplateView):
                 | Q(rental_id__in=rental_ids)
                 | Q(application_id__in=app_ids)
             )
-            last_body = (
-                ChatMessage.objects
-                .filter(room_id=OuterRef("pk"))
-                .order_by("-created_at")
-                .values("body")[:1]
-            )
-            last_at = (
-                ChatMessage.objects
-                .filter(room_id=OuterRef("pk"))
-                .order_by("-created_at")
-                .values("created_at")[:1]
-            )
             room_qs = room_qs.annotate(
-                last_message_body=Subquery(last_body),
-                last_message_at=Subquery(last_at),
+                last_message_body=Subquery(last_body_qs),
+                last_message_at=Subquery(last_at_qs),
                 unread_count=Count(
                     "messages",
                     filter=Q(messages__is_read=False) & ~Q(messages__user=user),
@@ -726,11 +736,11 @@ class MessagesPage(LoginRequiredMixin, TemplateView):
         for p in purchases:
             other = p.product.owner if p.buyer_id == user.id else p.buyer
             room = room_by_purchase.get(p.id)
-            last_at = getattr(room, "last_message_at", None) if room else None
+            last_msg_at = getattr(room, "last_message_at", None) if room else None
             transactions.append({
                 "kind_label": "購入",
                 "created_at": p.created_at,
-                "activity_at": last_at or p.created_at,
+                "activity_at": last_msg_at or p.created_at,
                 "product_title": p.product_title or getattr(p.product, "title", ""),
                 "other_name": display_name(other),
                 "status_label": p.get_status_display() if hasattr(p, "get_status_display") else p.status,
@@ -742,11 +752,11 @@ class MessagesPage(LoginRequiredMixin, TemplateView):
         for r in rentals:
             other = r.product.owner if r.renter_id == user.id else r.renter
             room = room_by_rental.get(r.id)
-            last_at = getattr(room, "last_message_at", None) if room else None
+            last_msg_at = getattr(room, "last_message_at", None) if room else None
             transactions.append({
                 "kind_label": "レンタル",
                 "created_at": r.created_at,
-                "activity_at": last_at or r.created_at,
+                "activity_at": last_msg_at or r.created_at,
                 "product_title": r.product_title or getattr(r.product, "title", ""),
                 "other_name": display_name(other),
                 "status_label": r.get_status_display() if hasattr(r, "get_status_display") else r.status,
@@ -759,17 +769,50 @@ class MessagesPage(LoginRequiredMixin, TemplateView):
             other = a.owner if a.renter_id == user.id else a.renter
             order_label = "レンタル" if a.order_type == RentalApplication.OrderType.RENTAL else "購入"
             room = room_by_app.get(a.id)
-            last_at = getattr(room, "last_message_at", None) if room else None
+            last_msg_at = getattr(room, "last_message_at", None) if room else None
             transactions.append({
                 "kind_label": order_label,
                 "created_at": a.created_at,
-                "activity_at": last_at or a.created_at,
+                "activity_at": last_msg_at or a.created_at,
                 "product_title": getattr(a.product, "title", ""),
                 "other_name": display_name(other),
                 "status_label": a.get_status_display() if hasattr(a, "get_status_display") else a.status,
                 "chat_url": reverse("chat:chat_detail", args=[room.id]) if room else reverse("chat:start_rental_app_chat", args=[a.id]),
                 "last_message": getattr(room, "last_message_body", "") if room else "",
                 "unread": getattr(room, "unread_count", 0) if room else 0,
+            })
+
+        pre_rooms = (
+            ChatRoom.objects
+            .select_related("product", "user1", "user2")
+            .filter(
+                Q(user1=user) | Q(user2=user),
+                rental__isnull=True,
+                purchase__isnull=True,
+                application__isnull=True,
+            )
+            .annotate(
+                last_message_body=Subquery(last_body_qs),
+                last_message_at=Subquery(last_at_qs),
+                unread_count=Count(
+                    "messages",
+                    filter=Q(messages__is_read=False) & ~Q(messages__user=user),
+                ),
+            )
+        )
+
+        for room in pre_rooms:
+            other = room.user1 if room.user1_id != user.id else room.user2
+            transactions.append({
+                "kind_label": "相談",
+                "created_at": room.created_at,
+                "activity_at": getattr(room, "last_message_at", None) or room.created_at,
+                "product_title": getattr(room.product, "title", ""),
+                "other_name": display_name(other),
+                "status_label": "取引前",
+                "chat_url": reverse("chat:chat_detail", args=[room.id]),
+                "last_message": getattr(room, "last_message_body", "") or "",
+                "unread": getattr(room, "unread_count", 0) or 0,
             })
 
         transactions.sort(

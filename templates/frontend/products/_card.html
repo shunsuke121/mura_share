@@ -16,8 +16,5 @@
     {% endif %}
     <div class="small fw-bold text-truncate">{{ p.title }}</div>
     <div class="text-muted small text-truncate">{{ p.category }}</div>
-    {% if p.average_rating %}
-      <div class="mt-1 text-warning small">★ {{ p.average_rating|floatformat:1 }}（{{ p.review_count|default:0 }}）</div>
-    {% endif %}
   </div>
 </div>

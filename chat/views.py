@@ -84,22 +84,43 @@ class StartChatView(LoginRequiredMixin, View):
     def get(self, request, product_id):
         product = get_object_or_404(Product, id=product_id)
         user = request.user
-        seller = product.owner  # ← owner に統一
+        seller = product.owner  # owner
 
         if user == seller:
             return redirect("frontend:product_detail", pk=product.id)
 
-        # 既存ルーム確認
+        purchase = (
+            Purchase.objects
+            .filter(product=product)
+            .filter(models.Q(buyer=user) | models.Q(product__owner=user))
+            .order_by("-created_at")
+            .first()
+        )
+        if purchase:
+            return redirect("chat:start_purchase_chat", purchase_id=purchase.id)
+
+        app = (
+            RentalApplication.objects
+            .filter(product=product)
+            .filter(models.Q(renter=user) | models.Q(owner=user))
+            .order_by("-created_at")
+            .first()
+        )
+        if app:
+            return redirect("chat:start_rental_app_chat", app_id=app.id)
+
+        rental = (
+            Rental.objects
+            .filter(product=product)
+            .filter(models.Q(renter=user) | models.Q(product__owner=user))
+            .order_by("-created_at")
+            .first()
+        )
+        if rental:
+            return redirect("chat:start_rental_chat", rental_id=rental.id)
+
         room = (
             ChatRoom.objects.filter(
-                product=product,
-                user1=user,
-                user2=seller,
-                rental__isnull=True,
-                purchase__isnull=True,
-                application__isnull=True,
-            ).first()
-            or ChatRoom.objects.filter(
                 product=product,
                 user1=seller,
                 user2=user,
@@ -107,13 +128,20 @@ class StartChatView(LoginRequiredMixin, View):
                 purchase__isnull=True,
                 application__isnull=True,
             ).first()
+            or ChatRoom.objects.filter(
+                product=product,
+                user1=user,
+                user2=seller,
+                rental__isnull=True,
+                purchase__isnull=True,
+                application__isnull=True,
+            ).first()
         )
 
         if not room:
-            room = ChatRoom.objects.create(product=product, user1=user, user2=seller)
+            room = ChatRoom.objects.create(product=product, user1=seller, user2=user)
 
         return redirect("chat:chat_detail", room_id=room.id)
-
 
 class StartPurchaseChatView(LoginRequiredMixin, View):
     def get(self, request, purchase_id):

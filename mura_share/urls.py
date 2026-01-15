@@ -6,7 +6,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework_nested import routers
 from django.views.generic import RedirectView  # ← 追加
-from marketplace.views import ProductViewSet, ProductImageViewSet, RentalViewSet, PurchaseViewSet, ReviewViewSet
+from marketplace.views import ProductViewSet, ProductImageViewSet, RentalViewSet, PurchaseViewSet
 from chat.views import ChatRoomViewSet, ChatMessageViewSet
 from notifications.views import NotificationViewSet
 from accounts.views import RegisterView, MeView
@@ -15,7 +15,6 @@ router = routers.DefaultRouter()
 router.register(r"products", ProductViewSet, basename="products")
 router.register(r"rentals", RentalViewSet, basename="rentals")
 router.register(r"purchases", PurchaseViewSet, basename="purchases")
-router.register(r"reviews", ReviewViewSet, basename="reviews")
 router.register(r"notifications", NotificationViewSet, basename="notifications")
 router.register(r"rooms", ChatRoomViewSet, basename="rooms")
 

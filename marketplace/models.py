@@ -2,6 +2,8 @@
 
 from django.conf import settings
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 
 User = settings.AUTH_USER_MODEL
@@ -451,5 +453,112 @@ class Shipment(models.Model):
         pur = getattr(self.purchase, "id", None)
         ref = f"R#{rid}" if rid else (f"A#{aid}" if aid else (f"PU#{pur}" if pur else "-"))
         return f"{self.get_kind_display()} / {self.get_direction_display()} / P#{pid} / {ref} / {self.tracking_no or '-'}"
+
+
+def _get_chat_room_model():
+    try:
+        from chat.models import ChatRoom
+    except Exception:
+        return None
+    return ChatRoom
+
+
+def _attach_or_create_transaction_chat_room(transaction_field, instance, product, owner, other_user):
+    ChatRoom = _get_chat_room_model()
+    if ChatRoom is None:
+        return
+    if not product or not owner or not other_user:
+        return
+
+    if ChatRoom.objects.filter(**{transaction_field: instance}).exists():
+        return
+
+    pre_room = (
+        ChatRoom.objects.filter(
+            product=product,
+            user1=owner,
+            user2=other_user,
+            rental__isnull=True,
+            purchase__isnull=True,
+            application__isnull=True,
+        )
+        .order_by("created_at")
+        .first()
+    )
+    if not pre_room:
+        pre_room = (
+            ChatRoom.objects.filter(
+                product=product,
+                user1=other_user,
+                user2=owner,
+                rental__isnull=True,
+                purchase__isnull=True,
+                application__isnull=True,
+            )
+            .order_by("created_at")
+            .first()
+        )
+
+    if pre_room:
+        setattr(pre_room, transaction_field, instance)
+        pre_room.save(update_fields=[transaction_field])
+        return
+
+    create_kwargs = {transaction_field: instance}
+    ChatRoom.objects.create(product=product, user1=owner, user2=other_user, **create_kwargs)
+
+
+@receiver(post_save, sender=Purchase)
+def _create_chat_for_purchase(sender, instance, created, **kwargs):
+    if not created:
+        return
+    product = getattr(instance, "product", None)
+    owner = getattr(product, "owner", None) if product else None
+    buyer = getattr(instance, "buyer", None)
+    if not product or not owner or not buyer or owner.id == buyer.id:
+        return
+    _attach_or_create_transaction_chat_room(
+        "purchase",
+        instance,
+        product,
+        owner,
+        buyer,
+    )
+
+
+@receiver(post_save, sender=Rental)
+def _create_chat_for_rental(sender, instance, created, **kwargs):
+    if not created:
+        return
+    product = getattr(instance, "product", None)
+    owner = getattr(product, "owner", None) if product else None
+    renter = getattr(instance, "renter", None)
+    if not product or not owner or not renter or owner.id == renter.id:
+        return
+    _attach_or_create_transaction_chat_room(
+        "rental",
+        instance,
+        product,
+        owner,
+        renter,
+    )
+
+
+@receiver(post_save, sender=RentalApplication)
+def _create_chat_for_application(sender, instance, created, **kwargs):
+    if not created:
+        return
+    product = getattr(instance, "product", None)
+    owner = getattr(instance, "owner", None)
+    renter = getattr(instance, "renter", None)
+    if not product or not owner or not renter or owner.id == renter.id:
+        return
+    _attach_or_create_transaction_chat_room(
+        "application",
+        instance,
+        product,
+        owner,
+        renter,
+    )
 
 
