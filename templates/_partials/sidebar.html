@@ -15,13 +15,11 @@
 
     <a href="{% url 'frontend:products' %}"
        class="sidebar-link {% if request.resolver_match.url_name == 'products' %}is-active{% endif %}">
-      <span class="sidebar-icon bi bi-house"></span>
       <span class="sidebar-text">ホーム</span>
     </a>
 
     <a href="{% url 'frontend:product_new' %}"
        class="sidebar-link {% if request.resolver_match.url_name == 'product_new' %}is-active{% endif %}">
-      <span class="sidebar-icon bi bi-plus-circle"></span>
       <span class="sidebar-text">商品を投稿</span>
     </a>
 
@@ -30,32 +28,27 @@
       href="{% url 'frontend:rental_manage' %}"
       class="sidebar-link {% if request.resolver_match.url_name == 'rentals' %}is-active{% endif %}"
     >
-      <span class="sidebar-icon bi bi-calendar-event"></span>
       <span class="sidebar-text">レンタル管理</span>
     </a>
 
     <a href="{% url 'frontend:purchases' %}"
        class="sidebar-link {% if request.resolver_match.url_name == 'purchases' %}is-active{% endif %}">
-      <span class="sidebar-icon bi bi-bag"></span>
       <span class="sidebar-text">購入管理</span>
     </a>
 
     <a href="{% url 'frontend:returns' %}"
        class="sidebar-link {% if request.resolver_match.url_name == 'returns' %}is-active{% endif %}">
-      <span class="sidebar-icon bi bi-box"></span>
       <span class="sidebar-text">返品管理</span>
     </a>
 
     <a href="{% url 'frontend:messages' %}"
        class="sidebar-link {% if request.resolver_match.url_name == 'messages' %}is-active{% endif %}">
-      <span class="sidebar-icon bi bi-chat-dots"></span>
       <span class="sidebar-text">メッセージ</span>
     </a>
 
     {% if request.user.is_staff %}
   <a href="{% url 'frontend:admin_shipping' %}"
      class="sidebar-link {% if request.resolver_match.url_name == 'admin_shipping' %}is-active{% endif %}">
-    <span class="sidebar-icon bi bi-truck"></span>
     <span class="sidebar-text">配送管理</span>
   </a>
 {% endif %}
@@ -63,7 +56,6 @@
 
     <a href="{% url 'frontend:profile' %}"
        class="sidebar-link {% if request.resolver_match.url_name == 'profile' %}is-active{% endif %}">
-      <span class="sidebar-icon bi bi-person"></span>
       <span class="sidebar-text">プロフィール</span>
     </a>
 
@@ -72,7 +64,6 @@
       href="{% url 'frontend:company' %}"
       class="sidebar-link {% if request.resolver_match.url_name == 'company' %}is-active{% endif %}"
     >
-      <span class="sidebar-icon bi bi-building"></span>
       <span class="sidebar-text">会社概要</span>
     </a>
 
@@ -81,7 +72,6 @@
       href="{% url 'frontend:contact' %}"
       class="sidebar-link {% if request.resolver_match.url_name == 'contact' %}is-active{% endif %}"
     >
-      <span class="sidebar-icon bi bi-envelope"></span>
       <span class="sidebar-text">お問い合わせ</span>
     </a>
 
