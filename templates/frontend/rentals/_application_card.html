@@ -68,64 +68,103 @@
 
     <div class="d-flex flex-wrap gap-2 mt-3 align-items-stretch">
       {% with s=a.status|lower %}
-        {% if mode == "received" %}
-          {% if s == "pending" %}
-            <div class="d-flex gap-2 flex-wrap flex-grow-1">
-              <form method="post" action="{% url 'frontend:rental_app_approve' a.id %}" class="m-0 flex-grow-1">
-                {% csrf_token %}
-                <button class="btn btn-primary w-100">承認する</button>
-              </form>
-              <form method="post" action="{% url 'frontend:rental_app_reject' a.id %}" class="m-0 flex-grow-1">
-                {% csrf_token %}
-                <button class="btn btn-outline-danger w-100">却下する</button>
-              </form>
-            </div>
-
-          {% elif s == "approved" %}
-            <form method="post" action="{% url 'frontend:rental_app_ship' a.id %}" class="m-0 flex-grow-1 d-flex gap-2 flex-wrap">
+        {% if a.purchase_completed %}
+          <div class="flex-grow-1 small text-muted d-flex align-items-center">
+            購入手続き完了
+          </div>
+          {% if mode == "received" %}
+            <form method="post" action="{% url 'frontend:rental_app_hide' a.id %}" class="m-0 flex-grow-1">
               {% csrf_token %}
-              <input type="text" name="tracking_number" class="form-control flex-grow-1" placeholder="追跡番号">
-              <button class="btn btn-primary">配送する</button>
+              <button class="btn btn-outline-secondary w-100">非表示</button>
             </form>
-
-          {% elif s == "shipped" %}
-            <div class="flex-grow-1 small text-muted d-flex align-items-center">
-              配送済み・追跡番号:
-              <strong class="ms-1">{{ a.tracking_number|default:"-" }}</strong>
-            </div>
-
-          {% elif s == "return_shipped" %}
-            <form method="post" action="{% url 'frontend:rental_app_confirm_return' a.id %}" class="m-0 flex-grow-1">
-              {% csrf_token %}
-              <button class="btn btn-primary w-100">レンタル終了</button>
-            </form>
-
           {% else %}
-            <div class="flex-grow-1 small text-muted d-flex align-items-center">
-              この申請は<strong class="ms-1">{{ a.status_label|default:a.get_status_display|default:a.status }}</strong>です。
-            </div>
+            <form method="post" action="{% url 'frontend:rental_app_hide_mine' a.id %}" class="m-0 flex-grow-1">
+              {% csrf_token %}
+              <button class="btn btn-outline-secondary w-100">非表示</button>
+            </form>
+          {% endif %}
+        {% elif s == "completed" %}
+          <div class="flex-grow-1 small text-muted d-flex align-items-center">
+            レンタル完了
+          </div>
+          {% if mode == "received" %}
+            <form method="post" action="{% url 'frontend:rental_app_hide' a.id %}" class="m-0 flex-grow-1">
+              {% csrf_token %}
+              <button class="btn btn-outline-secondary w-100">非表示</button>
+            </form>
+          {% else %}
+            <form method="post" action="{% url 'frontend:rental_app_hide_mine' a.id %}" class="m-0 flex-grow-1">
+              {% csrf_token %}
+              <button class="btn btn-outline-secondary w-100">非表示</button>
+            </form>
           {% endif %}
         {% else %}
-          {% if s == "shipped" %}
-            <form method="post" action="{% url 'frontend:rental_app_receive' a.id %}" class="m-0 flex-grow-1">
-              {% csrf_token %}
-              <button class="btn btn-primary w-100">レンタル開始</button>
-            </form>
+          {% if mode == "received" %}
+            {% if s == "pending" %}
+              <div class="d-flex gap-2 flex-wrap flex-grow-1">
+                <form method="post" action="{% url 'frontend:rental_app_approve' a.id %}" class="m-0 flex-grow-1">
+                  {% csrf_token %}
+                  <button class="btn btn-primary w-100">承認する</button>
+                </form>
+                <form method="post" action="{% url 'frontend:rental_app_reject' a.id %}" class="m-0 flex-grow-1">
+                  {% csrf_token %}
+                  <button class="btn btn-outline-danger w-100">却下する</button>
+                </form>
+              </div>
 
-          {% elif s == "received" or s == "renting" %}
-            <form method="post" action="{% url 'frontend:rental_app_return_ship' a.id %}" class="m-0 flex-grow-1 d-flex gap-2 flex-wrap">
-              {% csrf_token %}
-              <input type="text" name="return_tracking_number" class="form-control flex-grow-1" placeholder="返却の追跡番号">
-              <button class="btn btn-primary">返却する</button>
-            </form>
+            {% elif s == "approved" %}
+              <form method="post" action="{% url 'frontend:rental_app_ship' a.id %}" class="m-0 flex-grow-1 d-flex gap-2 flex-wrap">
+                {% csrf_token %}
+                <input type="text" name="tracking_number" class="form-control flex-grow-1" placeholder="追跡番号">
+                <button class="btn btn-primary">配送する</button>
+              </form>
 
+            {% elif s == "shipped" %}
+              <div class="flex-grow-1 small text-muted d-flex align-items-center">
+                配送済み・追跡番号:
+                <strong class="ms-1">{{ a.tracking_number|default:"-" }}</strong>
+              </div>
+
+            {% elif s == "return_shipped" %}
+              <form method="post" action="{% url 'frontend:rental_app_confirm_return' a.id %}" class="m-0 flex-grow-1">
+                {% csrf_token %}
+                <button class="btn btn-primary w-100">レンタル終了</button>
+              </form>
+
+            {% else %}
+              <div class="flex-grow-1 small text-muted d-flex align-items-center">
+                この申請は<strong class="ms-1">{{ a.status_label|default:a.get_status_display|default:a.status }}</strong>です。
+              </div>
+            {% endif %}
           {% else %}
-            <form method="post" action="{% url 'frontend:rental_app_cancel' a.id %}" class="m-0 flex-grow-1">
-              {% csrf_token %}
-              <button class="btn btn-outline-danger w-100" {% if s != "pending" and s != "approved" %}disabled{% endif %}>
-                キャンセル
-              </button>
-            </form>
+            {% if s == "shipped" %}
+              <form method="post" action="{% url 'frontend:rental_app_receive' a.id %}" class="m-0 flex-grow-1">
+                {% csrf_token %}
+                <button class="btn btn-primary w-100">レンタル開始</button>
+              </form>
+
+            {% elif s == "received" or s == "renting" %}
+              <form method="post" action="{% url 'frontend:rental_app_return_ship' a.id %}" class="m-0 flex-grow-1 d-flex gap-2 flex-wrap">
+                {% csrf_token %}
+                <input type="text" name="return_tracking_number" class="form-control flex-grow-1" placeholder="返却の追跡番号">
+                <button class="btn btn-primary">返却する</button>
+              </form>
+              {% if a.order_type == "rental" and a.product %}
+                {% if a.product.availability_type == "レンタル・販売両方" or a.product.availability_type == "販売のみ" %}
+                  <form method="get" action="{% url 'frontend:rental_app_purchase' a.id %}" class="m-0 flex-grow-1">
+                    <button class="btn btn-outline-primary w-100">購入する</button>
+                  </form>
+                {% endif %}
+              {% endif %}
+
+            {% else %}
+              <form method="post" action="{% url 'frontend:rental_app_cancel' a.id %}" class="m-0 flex-grow-1">
+                {% csrf_token %}
+                <button class="btn btn-outline-danger w-100" {% if s != "pending" and s != "approved" %}disabled{% endif %}>
+                  キャンセル
+                </button>
+              </form>
+            {% endif %}
           {% endif %}
         {% endif %}
       {% endwith %}

@@ -168,6 +168,21 @@
           {% endif %}
         {% endif %}
       {% endwith %}
+      {% if order.can_hide %}
+        {% if mode == 'received' %}
+          <form method="post" action="{% url 'frontend:purchase_hide_received' order.id %}" class="m-0 flex-grow-1">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button type="submit" class="btn btn-outline-secondary w-100">非表示</button>
+          </form>
+        {% else %}
+          <form method="post" action="{% url 'frontend:purchase_hide_mine' order.id %}" class="m-0 flex-grow-1">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button type="submit" class="btn btn-outline-secondary w-100">非表示</button>
+          </form>
+        {% endif %}
+      {% endif %}
     </div>
   </div>
 </div>

@@ -204,6 +204,9 @@ class Purchase(models.Model):
     shipping_address = models.CharField(max_length=255, blank=True)
     payment_method   = models.CharField(max_length=50, blank=True)
     message          = models.TextField(blank=True)
+    from_rental      = models.BooleanField(default=False)
+    hidden_by_buyer  = models.BooleanField(default=False)
+    hidden_by_seller = models.BooleanField(default=False)
 
     quantity       = models.PositiveIntegerField(default=1)
     purchase_price = models.PositiveIntegerField(default=0)
@@ -325,6 +328,8 @@ class RentalApplication(models.Model):
     return_tracking_number = models.CharField(max_length=100, blank=True, default="")
 
     status     = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    hidden_by_owner = models.BooleanField(default=False)
+    hidden_by_renter = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

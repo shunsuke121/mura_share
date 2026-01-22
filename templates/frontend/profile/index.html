@@ -407,6 +407,21 @@
                         {% endif %}
                         <span class="ms-2">数量: {{ item.quantity|default:1 }}</span>
                       </div>
+                      {% if p %}
+                        {% if p.availability_type == "レンタル・販売両方" or p.availability_type == "販売のみ" %}
+                          <div class="mt-2 d-flex gap-2">
+                            {% if item.application_id %}
+                              <form method="get" action="{% url 'frontend:rental_app_purchase' item.application_id %}" class="m-0">
+                                <button class="btn btn-outline-primary btn-sm">購入する</button>
+                              </form>
+                            {% elif item.rental_id %}
+                              <form method="get" action="{% url 'frontend:rental_purchase' item.rental_id %}" class="m-0">
+                                <button class="btn btn-outline-primary btn-sm">購入する</button>
+                              </form>
+                            {% endif %}
+                          </div>
+                        {% endif %}
+                      {% endif %}
                     </div>
                   </div>
                 </div>

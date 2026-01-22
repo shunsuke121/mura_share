@@ -17,6 +17,7 @@ urlpatterns = [
 
     path("profile/history/", views.profile_history, name="profile_history"),
     path("rentals/<int:rental_id>/finish/", views.rental_finish, name="rental_finish"),
+    path("rentals/<int:rental_id>/purchase/", views.rental_purchase, name="rental_purchase"),
     path("purchases/<int:purchase_id>/receive_done/", views.purchase_receive_done, name="purchase_receive_done"),
 
     # 追加: 編集 / 削除API
@@ -31,6 +32,8 @@ urlpatterns = [
     path("purchases/", views.purchases_index, name="purchases"),
     path("purchases/my/", views.my_purchases, name="my_purchases"),
     path("purchases/received/", views.received_purchases, name="received_purchases"),
+    path("purchases/<int:purchase_id>/hide_mine/", views.purchase_hide_mine, name="purchase_hide_mine"),
+    path("purchases/<int:purchase_id>/hide_received/", views.purchase_hide_received, name="purchase_hide_received"),
     path("rentals/received/", views.received_rentals, name="received_rentals"),
     path("rentals/", views.rentals_index, name="rentals"),
 
@@ -72,5 +75,8 @@ urlpatterns = [
     # 借り手側のアクション
     path("rentals/app/<int:app_id>/receive/",      views.rental_app_receive,      name="rental_app_receive"),
     path("rentals/app/<int:app_id>/return_ship/",  views.rental_app_return_ship,  name="rental_app_return_ship"),
+    path("rentals/app/<int:app_id>/purchase/",     views.rental_app_purchase,     name="rental_app_purchase"),
+    path("rentals/app/<int:app_id>/hide/",         views.rental_app_hide,         name="rental_app_hide"),
+    path("rentals/app/<int:app_id>/hide_mine/",    views.rental_app_hide_mine,    name="rental_app_hide_mine"),
     path("rentals/app/<int:app_id>/confirm_return/", views.rental_app_confirm_return, name="rental_app_confirm_return",),
 ]

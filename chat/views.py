@@ -1,6 +1,7 @@
 import requests
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import DetailView
@@ -87,6 +88,10 @@ class StartChatView(LoginRequiredMixin, View):
         seller = product.owner  # owner
 
         if user == seller:
+            return redirect("frontend:product_detail", pk=product.id)
+
+        if getattr(product, "is_sold_out", False):
+            messages.warning(request, "売り切れとなっています。")
             return redirect("frontend:product_detail", pk=product.id)
 
         purchase = (

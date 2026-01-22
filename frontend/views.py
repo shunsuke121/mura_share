@@ -431,24 +431,40 @@ def _handle_purchase_action(request, redirect_name):
                 if not is_pending_like:
                     raise ValueError("承認待ちのみ承認できます。")
 
-                purchase.status = S_APPROVED
-                if hasattr(purchase, "approved_at"):
-                    purchase.approved_at = timezone.now()
-                    purchase.save(update_fields=["status", "approved_at"])
+                is_from_rental = bool(getattr(purchase, "from_rental", False))
+                now = timezone.now()
+                if is_from_rental:
+                    purchase.status = S_COMPLETED
+                    update_fields = ["status"]
+                    if hasattr(purchase, "approved_at"):
+                        purchase.approved_at = now
+                        update_fields.append("approved_at")
+                    if hasattr(purchase, "completed_date"):
+                        purchase.completed_date = now
+                        update_fields.append("completed_date")
+                    purchase.save(update_fields=update_fields)
+                    _close_active_rental_for_purchase(purchase)
+                    from django.contrib import messages
+                    messages.success(request, "承認しました。購入手続き完了です。")
                 else:
-                    purchase.save(update_fields=["status"])
-
-                _create_shipment_for_purchase(
-                    purchase,
-                    getattr(Shipment.Direction, "OUTBOUND", "outbound"),
-                )
-
-                from django.contrib import messages
-                messages.success(request, "承認しました。追跡番号入力が有効になりました。")
+                    purchase.status = S_APPROVED
+                    if hasattr(purchase, "approved_at"):
+                        purchase.approved_at = now
+                        purchase.save(update_fields=["status", "approved_at"])
+                    else:
+                        purchase.save(update_fields=["status"])
+                    _create_shipment_for_purchase(
+                        purchase,
+                        getattr(Shipment.Direction, "OUTBOUND", "outbound"),
+                    )
+                    from django.contrib import messages
+                    messages.success(request, "承認しました。追跡番号入力が有効になりました。")
 
             elif action == "ship":
                 if purchase.product.owner_id != user.id:
                     raise ValueError("発送権限がありません。")
+                if getattr(purchase, "from_rental", False):
+                    raise ValueError("レンタル購入は配送不要です。")
                 if purchase.status != S_APPROVED:
                     raise ValueError("承認済みのみ配送できます。")
                 if not tracking:
@@ -517,6 +533,8 @@ def _handle_purchase_action(request, redirect_name):
                     direction=getattr(Shipment.Direction, "OUTBOUND", "outbound"),
                 ).update(status=getattr(Shipment.Status, "DELIVERED", "delivered"))
 
+                _close_active_rental_for_purchase(purchase)
+
                 from django.contrib import messages
                 messages.success(request, "受取完了として更新しました。")
 
@@ -528,7 +546,8 @@ def _handle_purchase_action(request, redirect_name):
 
                 purchase.status = S_CANCELED
                 purchase.save(update_fields=["status"])
-                _adjust_available_quantity(purchase.product, purchase.quantity or 1)
+                if not _has_active_rental_for_purchase(purchase):
+                    _adjust_available_quantity(purchase.product, purchase.quantity or 1)
                 from django.contrib import messages
                 messages.success(request, "キャンセルしました。")
 
@@ -541,6 +560,393 @@ def _handle_purchase_action(request, redirect_name):
 
     return redirect(redirect_name)
 
+
+def _purchase_closed_statuses():
+    return {
+        getattr(Purchase.Status, "CANCELED", "CANCELED"),
+        getattr(Purchase.Status, "COMPLETED", "COMPLETED"),
+        "CANCELED",
+        "COMPLETED",
+        "キャンセル",
+        "完了",
+    }
+
+
+def _purchase_completed_statuses():
+    return {
+        getattr(Purchase.Status, "COMPLETED", "COMPLETED"),
+        "COMPLETED",
+        "completed",
+        "完了",
+    }
+
+
+def _purchase_return_in_progress(purchase):
+    rs = str(getattr(purchase, "return_status", "") or "").upper()
+    return rs in ("REQUESTED", "APPROVED", "SHIPPED")
+
+
+def _purchase_is_completed(purchase):
+    st = str(getattr(purchase, "status", "") or "")
+    completed = getattr(Purchase.Status, "COMPLETED", "COMPLETED")
+    return st in (completed, "COMPLETED")
+
+
+def _purchase_can_hide(purchase):
+    if _purchase_return_in_progress(purchase):
+        return False
+    rs = str(getattr(purchase, "return_status", "") or "").upper()
+    if rs in ("RECEIVED", "REJECTED"):
+        return True
+    return _purchase_is_completed(purchase)
+
+
+def _prepare_purchase_items(qs):
+    items = list(qs)
+    for p in items:
+        p.can_hide = _purchase_can_hide(p)
+    return items
+
+
+def _purchase_completed_for_app(app):
+    if not app or not app.product_id or not app.renter_id:
+        return False
+    qs = Purchase.objects.filter(
+        product_id=app.product_id,
+        buyer_id=app.renter_id,
+        status__in=_purchase_completed_statuses(),
+    )
+    if hasattr(Purchase, "from_rental"):
+        if qs.filter(from_rental=True).exists():
+            return True
+        if getattr(app, "created_at", None):
+            qs = qs.filter(created_at__gte=app.created_at)
+    return qs.exists()
+
+
+def _has_open_purchase(product, buyer):
+    if not product or not buyer:
+        return False
+    return (Purchase.objects
+            .filter(product=product, buyer=buyer)
+            .exclude(status__in=_purchase_closed_statuses())
+            .exists())
+
+
+def _allow_purchase_for_product(product):
+    t = getattr(product, "availability_type", None)
+    return t in (
+        getattr(Product.Availability, "BOTH", "レンタル・販売両方"),
+        getattr(Product.Availability, "SALE_ONLY", "販売のみ"),
+        "レンタル・販売両方",
+        "販売のみ",
+    )
+
+
+def _has_active_rental_for_purchase(purchase):
+    if not purchase or not purchase.product_id or not purchase.buyer_id:
+        return False
+    rental_active = Rental.objects.filter(
+        product_id=purchase.product_id,
+        renter_id=purchase.buyer_id,
+        status=Rental.Status.RENTING,
+    ).exists()
+    app_active = RentalApplication.objects.filter(
+        product_id=purchase.product_id,
+        renter_id=purchase.buyer_id,
+        order_type=RentalApplication.OrderType.RENTAL,
+        status__in=["renting", "received"],
+    ).exists()
+    return rental_active or app_active
+
+
+def _close_active_rental_for_purchase(purchase):
+    if not purchase or not purchase.product_id or not purchase.buyer_id:
+        return
+    now = timezone.now()
+    Rental.objects.filter(
+        product_id=purchase.product_id,
+        renter_id=purchase.buyer_id,
+        status=Rental.Status.RENTING,
+    ).update(
+        status=Rental.Status.COMPLETED,
+        completed_date=now,
+    )
+
+    app_qs = RentalApplication.objects.filter(
+        product_id=purchase.product_id,
+        renter_id=purchase.buyer_id,
+        order_type=RentalApplication.OrderType.RENTAL,
+        status__in=["renting", "received"],
+    )
+    if app_qs.exists():
+        update_fields = {"status": RentalApplication.Status.COMPLETED}
+        app_field_names = {f.name for f in RentalApplication._meta.get_fields()}
+        if "completed_date" in app_field_names:
+            update_fields["completed_date"] = now
+        app_qs.update(**update_fields)
+
+
+def _create_purchase_from_rental(
+    product,
+    buyer,
+    quantity,
+    payment_method,
+    shipping_address,
+    shipping_postal_code="",
+    message_txt="",
+    purchase_price=None,
+):
+    try:
+        initial_status = Purchase.Status.PENDING
+    except Exception:
+        initial_status = getattr(Purchase.Status, "REQUESTED", "REQUESTED")
+
+    create_kwargs = {
+        "product": product,
+        "buyer": buyer,
+        "quantity": quantity or 1,
+        "status": initial_status,
+    }
+    if hasattr(Purchase, "product_title"):
+        create_kwargs["product_title"] = getattr(product, "title", "")
+    if hasattr(Purchase, "buyer_email"):
+        create_kwargs["buyer_email"] = getattr(buyer, "email", "")
+    if hasattr(Purchase, "seller_email"):
+        owner = getattr(product, "owner", None)
+        create_kwargs["seller_email"] = getattr(owner, "email", "") if owner else ""
+    if hasattr(Purchase, "shipping_address"):
+        create_kwargs["shipping_address"] = shipping_address or ""
+    if hasattr(Purchase, "shipping_postal_code"):
+        create_kwargs["shipping_postal_code"] = shipping_postal_code or ""
+    if hasattr(Purchase, "payment_method"):
+        create_kwargs["payment_method"] = payment_method or ""
+    if hasattr(Purchase, "message"):
+        create_kwargs["message"] = message_txt or ""
+    if hasattr(Purchase, "from_rental"):
+        create_kwargs["from_rental"] = True
+    if purchase_price is not None and hasattr(Purchase, "purchase_price"):
+        create_kwargs["purchase_price"] = max(int(purchase_price), 0)
+
+    return Purchase.objects.create(**create_kwargs)
+
+
+def _rental_purchase_pricing(
+    product,
+    quantity,
+    start_date=None,
+    end_date=None,
+    rental_start_date=None,
+    total_price=None,
+    total_days=None,
+):
+    qty = quantity or 1
+    purchase_price = (getattr(product, "price_buy", 0) or 0) * qty
+
+    start = None
+    if rental_start_date:
+        start = rental_start_date.date() if hasattr(rental_start_date, "date") else rental_start_date
+    elif start_date:
+        start = start_date
+
+    days_total = None
+    if start_date and end_date:
+        days_total = (end_date - start_date).days + 1
+        if days_total < 1:
+            days_total = None
+
+    days_used = None
+    if start:
+        today = timezone.localdate()
+        days_used = (today - start).days + 1
+        if days_used < 1:
+            days_used = 1
+        if days_total:
+            days_used = min(days_used, days_total)
+    elif total_days:
+        days_used = total_days
+
+    daily_price = getattr(product, "price_per_day", 0) or 0
+    rental_cost = 0
+    if daily_price and days_used:
+        rental_cost = daily_price * days_used * qty
+    elif total_price:
+        if total_days and days_used and total_days > 0:
+            rental_cost = int(round((total_price * days_used) / total_days))
+        else:
+            rental_cost = total_price
+
+    rental_cost = max(int(rental_cost or 0), 0)
+    payable = purchase_price - rental_cost
+    if payable < 0:
+        payable = 0
+
+    return {
+        "purchase_price": purchase_price,
+        "rental_cost": rental_cost,
+        "payable": payable,
+        "days_used": days_used,
+        "days_total": days_total,
+        "qty": qty,
+    }
+
+
+@login_required
+def rental_purchase(request, rental_id):
+    rental = get_object_or_404(
+        Rental.objects.select_related("product", "renter", "product__owner"),
+        id=rental_id,
+    )
+    back = request.META.get("HTTP_REFERER") or "frontend:rentals"
+    if rental.renter_id != request.user.id:
+        messages.error(request, "購入権限がありません。")
+        return redirect(back)
+    if rental.status != Rental.Status.RENTING:
+        messages.error(request, "レンタル中のみ購入できます。")
+        return redirect(back)
+
+    product = rental.product
+    if not product or not _allow_purchase_for_product(product):
+        messages.error(request, "この商品は購入できません。")
+        return redirect(back)
+    if _has_open_purchase(product, request.user):
+        messages.info(request, "既に購入申請済みです。")
+        return redirect("frontend:purchases")
+
+    payment_method = (getattr(rental, "payment_method", "") or "").strip()
+    if not payment_method:
+        messages.error(request, "決済方法が未設定のため購入できません。")
+        return redirect(back)
+
+    shipping_address = (getattr(rental, "shipping_address", "") or "").strip()
+    if not shipping_address:
+        profile = Profile.objects.filter(user=request.user).first()
+        shipping_address = (getattr(profile, "address", "") or "").strip()
+
+    pricing = _rental_purchase_pricing(
+        product=product,
+        quantity=getattr(rental, "quantity", 1) or 1,
+        start_date=getattr(rental, "start_date", None),
+        end_date=getattr(rental, "end_date", None),
+        rental_start_date=getattr(rental, "rental_start_date", None) or getattr(rental, "received_date_by_renter", None),
+        total_price=getattr(rental, "total_price", None),
+        total_days=getattr(rental, "total_days", None),
+    )
+
+    if request.method == "GET":
+        return render(request, "frontend/purchases/rental_confirm.html", {
+            "product": product,
+            "rental": rental,
+            "pricing": pricing,
+            "confirm_url": reverse("frontend:rental_purchase", args=[rental.id]),
+            "back_url": back,
+            "mode": "rental",
+        })
+
+    purchase = _create_purchase_from_rental(
+        product=product,
+        buyer=request.user,
+        quantity=getattr(rental, "quantity", 1) or 1,
+        payment_method=payment_method,
+        shipping_address=shipping_address,
+        message_txt=_strip_return_tracking_line(getattr(rental, "message", "")),
+        purchase_price=pricing["payable"],
+    )
+
+    try:
+        _create_notification(
+            product.owner,
+            "購入申請が届きました",
+            f"「{getattr(product, 'title', '商品')}」の購入申請が届きました。",
+            getattr(purchase, "id", None),
+            "frontend:purchases",
+            kind="purchase",
+        )
+    except Exception:
+        pass
+
+    messages.success(request, "購入申請を作成しました。")
+    return redirect("frontend:purchases")
+
+
+@login_required
+def rental_app_purchase(request, app_id):
+    app = get_object_or_404(
+        RentalApplication.objects.select_related("product", "owner", "renter"),
+        id=app_id,
+        renter=request.user,
+    )
+    back = request.META.get("HTTP_REFERER") or "frontend:my_applications"
+    if getattr(app, "order_type", "") != RentalApplication.OrderType.RENTAL:
+        messages.error(request, "レンタル申請のみ購入できます。")
+        return redirect(back)
+
+    status_now = str(getattr(app, "status", "")).lower()
+    if status_now not in ("renting", "received"):
+        messages.error(request, "レンタル中のみ購入できます。")
+        return redirect(back)
+
+    product = app.product
+    if not product or not _allow_purchase_for_product(product):
+        messages.error(request, "この商品は購入できません。")
+        return redirect(back)
+    if _has_open_purchase(product, request.user):
+        messages.info(request, "既に購入申請済みです。")
+        return redirect("frontend:purchases")
+
+    payment_method = (getattr(app, "payment_method", "") or "").strip()
+    if not payment_method:
+        messages.error(request, "決済方法が未設定のため購入できません。")
+        return redirect(back)
+
+    shipping_address = (getattr(app, "address", "") or "").strip()
+    if not shipping_address:
+        profile = Profile.objects.filter(user=request.user).first()
+        shipping_address = (getattr(profile, "address", "") or "").strip()
+
+    pricing = _rental_purchase_pricing(
+        product=product,
+        quantity=getattr(app, "quantity", 1) or 1,
+        start_date=getattr(app, "start_date", None),
+        end_date=getattr(app, "end_date", None),
+        rental_start_date=getattr(app, "rental_start_date", None) or getattr(app, "received_date_by_renter", None),
+    )
+
+    if request.method == "GET":
+        return render(request, "frontend/purchases/rental_confirm.html", {
+            "product": product,
+            "application": app,
+            "pricing": pricing,
+            "confirm_url": reverse("frontend:rental_app_purchase", args=[app.id]),
+            "back_url": back,
+            "mode": "application",
+        })
+
+    purchase = _create_purchase_from_rental(
+        product=product,
+        buyer=request.user,
+        quantity=getattr(app, "quantity", 1) or 1,
+        payment_method=payment_method,
+        shipping_address=shipping_address,
+        shipping_postal_code=(getattr(app, "postal_code", "") or "").strip(),
+        message_txt=_strip_return_tracking_line(getattr(app, "message", "")),
+        purchase_price=pricing["payable"],
+    )
+
+    try:
+        _create_notification(
+            product.owner,
+            "購入申請が届きました",
+            f"「{getattr(product, 'title', '商品')}」の購入申請が届きました。",
+            getattr(purchase, "id", None),
+            "frontend:purchases",
+            kind="purchase",
+        )
+    except Exception:
+        pass
+
+    messages.success(request, "購入申請を作成しました。")
+    return redirect("frontend:purchases")
 
 
 # ========= 商品一覧・詳細 =========
@@ -897,8 +1303,8 @@ def purchases_index(request):
     qs = (Purchase.objects
           .select_related("product", "buyer", "product__owner")
           .order_by("-id"))
-    mine = qs.filter(buyer=request.user)
-    received = qs.filter(product__owner=request.user)
+    mine = _prepare_purchase_items(qs.filter(buyer=request.user, hidden_by_buyer=False))
+    received = _prepare_purchase_items(qs.filter(product__owner=request.user, hidden_by_seller=False))
     context = {
         "active_tab": "received" if tab == "received" else "mine",
         "mine": mine,
@@ -911,10 +1317,12 @@ def purchases_index(request):
 def my_purchases(request):
     if request.method == "POST":
         return _handle_purchase_action(request, redirect_name="frontend:my_purchases")
-    items = (Purchase.objects
-             .select_related("product", "buyer", "product__owner")
-             .filter(buyer=request.user)
-             .order_by("-id"))
+    items = _prepare_purchase_items(
+        Purchase.objects
+        .select_related("product", "buyer", "product__owner")
+        .filter(buyer=request.user, hidden_by_buyer=False)
+        .order_by("-id")
+    )
     return render(request, "frontend/purchases/my_purchases.html",
                   {"my_purchases": items, "items": items, "mode": "mine"})
 
@@ -923,12 +1331,40 @@ def my_purchases(request):
 def received_purchases(request):
     if request.method == "POST":
         return _handle_purchase_action(request, redirect_name="frontend:received_purchases")
-    items = (Purchase.objects
-             .select_related("product", "buyer", "product__owner")
-             .filter(product__owner=request.user)
-             .order_by("-id"))
+    items = _prepare_purchase_items(
+        Purchase.objects
+        .select_related("product", "buyer", "product__owner")
+        .filter(product__owner=request.user, hidden_by_seller=False)
+        .order_by("-id")
+    )
     return render(request, "frontend/purchases/received_purchases.html",
                   {"received_purchases": items, "items": items, "mode": "received"})
+
+
+@login_required
+@require_POST
+def purchase_hide_mine(request, purchase_id):
+    purchase = get_object_or_404(Purchase, id=purchase_id, buyer=request.user)
+    if not _purchase_can_hide(purchase):
+        messages.warning(request, "完了した取引のみ非表示にできます。")
+        return redirect(request.POST.get("next") or request.META.get("HTTP_REFERER") or "frontend:purchases")
+    purchase.hidden_by_buyer = True
+    purchase.save(update_fields=["hidden_by_buyer"])
+    messages.success(request, "非表示にしました。")
+    return redirect(request.POST.get("next") or request.META.get("HTTP_REFERER") or "frontend:purchases")
+
+
+@login_required
+@require_POST
+def purchase_hide_received(request, purchase_id):
+    purchase = get_object_or_404(Purchase, id=purchase_id, product__owner=request.user)
+    if not _purchase_can_hide(purchase):
+        messages.warning(request, "完了した取引のみ非表示にできます。")
+        return redirect(request.POST.get("next") or request.META.get("HTTP_REFERER") or "frontend:purchases")
+    purchase.hidden_by_seller = True
+    purchase.save(update_fields=["hidden_by_seller"])
+    messages.success(request, "非表示にしました。")
+    return redirect(request.POST.get("next") or request.META.get("HTTP_REFERER") or "frontend:purchases")
 
 
 # ========= レンタル/購入 — 申請・管理 =========
@@ -937,7 +1373,8 @@ def received_purchases(request):
 def rental_manage(request):
     """出品者が受け取った申請一覧（レンタル/購入とも）"""
     apps = list(RentalApplication.objects.filter(
-        owner=request.user
+        owner=request.user,
+        hidden_by_owner=False,
     ).select_related("product", "renter").order_by("-created_at"))
     STATUS_LABELS = {
         "PENDING": "申請中",
@@ -975,13 +1412,24 @@ def rental_manage(request):
         a.status_code = s
         a.status_label = STATUS_LABELS.get(s, s)
         a.badge_class = BADGE_CLASS.get(s, "secondary")
+        a.purchase_completed = False
+        if (
+            getattr(a, "order_type", None) == RentalApplication.OrderType.RENTAL
+            and _purchase_completed_for_app(a)
+        ):
+            a.purchase_completed = True
+            a.status_label = "購入手続き完了"
+            a.badge_class = "secondary"
         a.display_message = _strip_return_tracking_line(getattr(a, "message", ""))
         a.display_message = _strip_return_tracking_line(getattr(a, "message", ""))
     ctx = {
         "applications": apps,
         "active_tab": "received",
         "received_count": len(apps),
-        "mine_count": RentalApplication.objects.filter(renter=request.user).count(),
+        "mine_count": RentalApplication.objects.filter(
+            renter=request.user,
+            hidden_by_renter=False,
+        ).count(),
     }
     return render(request, "frontend/rentals/manage.html", ctx)
 
@@ -1004,7 +1452,9 @@ def purchase_manage(request):
         "active_tab": "received",
         "received_count": len(apps),
         "mine_count": RentalApplication.objects.filter(
-            renter=request.user, order_type=RentalApplication.OrderType.PURCHASE
+            renter=request.user,
+            order_type=RentalApplication.OrderType.PURCHASE,
+            hidden_by_renter=False,
         ).count(),
     })
 
@@ -1013,7 +1463,7 @@ def purchase_manage(request):
 def my_applications(request):
     """借り手（自分）が送ったレンタル/購入の申請一覧を表示"""
     apps = (RentalApplication.objects
-            .filter(renter=request.user)
+            .filter(renter=request.user, hidden_by_renter=False)
             .select_related("product", "owner")
             .order_by("-created_at"))
 
@@ -1059,12 +1509,23 @@ def my_applications(request):
         a.status_code = s
         a.status_label = STATUS_LABELS.get(s, s)
         a.badge_class = BADGE_CLASS.get(s, "secondary")
+        a.purchase_completed = False
+        if (
+            getattr(a, "order_type", None) == RentalApplication.OrderType.RENTAL
+            and _purchase_completed_for_app(a)
+        ):
+            a.purchase_completed = True
+            a.status_label = "購入手続き完了"
+            a.badge_class = "secondary"
 
     ctx = {
         "applications": apps,
         "active_tab": "mine",
         "mine_count": apps.count(),
-        "received_count": RentalApplication.objects.filter(owner=request.user).count(),
+        "received_count": RentalApplication.objects.filter(
+            owner=request.user,
+            hidden_by_owner=False,
+        ).count(),
     }
     return render(request, "frontend/rentals/my_applications.html", ctx)
 
@@ -1257,6 +1718,46 @@ def rental_app_confirm_return(request, app_id):
     return redirect("frontend:rental_manage")
 
 
+@login_required
+@require_POST
+def rental_app_hide(request, app_id):
+    """出品者側：完了済み申請をレンタル管理から非表示にする"""
+    app = get_object_or_404(RentalApplication, id=app_id, owner=request.user)
+    from django.contrib import messages
+
+    if getattr(app, "order_type", "") != RentalApplication.OrderType.RENTAL:
+        messages.warning(request, "レンタル申請のみ非表示にできます。")
+        return redirect("frontend:rental_manage")
+
+    status_now = str(getattr(app, "status", "")).lower()
+    if status_now != "completed" and not _purchase_completed_for_app(app):
+        messages.warning(request, "完了した申請のみ非表示にできます。")
+        return redirect("frontend:rental_manage")
+
+    app.hidden_by_owner = True
+    app.save(update_fields=["hidden_by_owner"])
+    messages.success(request, "非表示にしました。")
+    return redirect("frontend:rental_manage")
+
+
+@login_required
+@require_POST
+def rental_app_hide_mine(request, app_id):
+    """借り手側：完了済み申請をマイ申請から非表示にする"""
+    app = get_object_or_404(RentalApplication, id=app_id, renter=request.user)
+    from django.contrib import messages
+
+    status_now = str(getattr(app, "status", "")).lower()
+    if status_now != "completed" and not _purchase_completed_for_app(app):
+        messages.warning(request, "完了した申請のみ非表示にできます。")
+        return redirect("frontend:my_applications")
+
+    app.hidden_by_renter = True
+    app.save(update_fields=["hidden_by_renter"])
+    messages.success(request, "非表示にしました。")
+    return redirect("frontend:my_applications")
+
+
 # ========= レンタル/購入 — 完了トリガ =========
 
 @login_required
@@ -1281,6 +1782,7 @@ def purchase_receive_done(request, purchase_id):
     p.status = Purchase.Status.COMPLETED.value  # => "完了"
     p.completed_date = timezone.now()
     p.save(update_fields=["status", "completed_date"])
+    _close_active_rental_for_purchase(p)
     messages.success(request, "受取完了にしました。取引履歴に表示されます。")
     return redirect("frontend:profile")
 
@@ -1293,18 +1795,23 @@ def returns_index(request):
 
     mine_qs = (Purchase.objects
                .select_related("product", "buyer", "product__owner")
-               .filter(buyer=request.user))
+               .filter(buyer=request.user, hidden_by_buyer=False))
 
-    mine = mine_qs.filter(
+    mine = _prepare_purchase_items(
+        mine_qs.filter(
         Q(status__in=[getattr(Purchase.Status, "COMPLETED", "COMPLETED"), "完了"])
         | Q(return_status__in=["REQUESTED", "APPROVED", "SHIPPED", "RECEIVED", "REJECTED"])
-    ).order_by("-id")
+        ).order_by("-id")
+    )
 
-    received = (Purchase.objects
-                .select_related("product", "buyer", "product__owner")
-                .filter(product__owner=request.user,
-                        return_status__in=["REQUESTED", "APPROVED", "SHIPPED"])
-                ).order_by("-id")
+    received = _prepare_purchase_items(
+        Purchase.objects
+        .select_related("product", "buyer", "product__owner")
+        .filter(product__owner=request.user,
+                hidden_by_seller=False,
+                return_status__in=["REQUESTED", "APPROVED", "SHIPPED"])
+        .order_by("-id")
+    )
 
     return render(request, "frontend/returns/index.html", {
         "active_tab": "received" if tab == "received" else "mine",
@@ -1981,6 +2488,7 @@ def profile(request):
                     "end_date": app.end_date,
                     "quantity": app.quantity or 1,
                     "started_at": app.created_at,
+                    "application_id": app.id,
                 })
         for r in rental_qs:
             if r.product:
@@ -1990,6 +2498,7 @@ def profile(request):
                     "end_date": r.end_date,
                     "quantity": r.quantity or 1,
                     "started_at": r.rental_start_date or r.received_date_by_renter or r.created_at,
+                    "rental_id": r.id,
                 })
         renting_items.sort(
             key=lambda x: x["started_at"] or timezone.now(),

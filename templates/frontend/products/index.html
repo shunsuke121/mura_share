@@ -91,7 +91,7 @@
                     aria-pressed="{% if p.is_favorited %}true{% else %}false{% endif %}">
               <i data-icon="heart" class="bi {% if p.is_favorited %}bi-heart-fill text-danger{% else %}bi-heart{% endif %}"></i>
             </button>
-            <a href="{% url 'chat:start_chat' p.id %}" class="pc-chat" aria-label="出品者とチャット">
+            <a href="{% url 'chat:start_chat' p.id %}" class="pc-chat" aria-label="出品者とチャット" data-sold-out="{% if p.is_sold_out %}1{% else %}0{% endif %}"{% if p.is_sold_out %} aria-disabled="true" title="売り切れとなっています"{% endif %}>
               <i class="bi bi-chat"></i>
             </a>
           </div>
@@ -175,6 +175,16 @@
     } catch(err){
       console.error(err);
     }
+  });
+
+  document.addEventListener('click', (e) => {
+    const chat = e.target.closest('.pc-chat');
+    if (!chat) return;
+    if (chat.getAttribute('data-sold-out') !== '1') return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    alert('売り切れとなっています');
   });
 })();
 </script>

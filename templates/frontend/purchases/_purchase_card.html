@@ -22,6 +22,8 @@
       <div class="text-end">
         {% if order.total_price %}
           <div class="fs-5 fw-bold">\{{ order.total_price|intcomma }}</div>
+        {% elif order.purchase_price %}
+          <div class="fs-5 fw-bold">\{{ order.purchase_price|intcomma }}</div>
         {% elif order.unit_price %}
           <div class="fs-5 fw-bold">\{{ order.unit_price|intcomma }}</div>
         {% elif order.product.price_buy %}
@@ -89,21 +91,29 @@
                 <input type="hidden" name="action" value="approve">
                 <button type="submit" class="btn btn-primary w-100">承認する</button>
               </form>
+              {% if not order.from_rental %}
               <form method="post" action="{% url 'frontend:received_purchases' %}" class="m-0 flex-grow-1">
                 {% csrf_token %}
                 <input type="hidden" name="purchase_id" value="{{ order.id }}">
                 <input type="hidden" name="action" value="cancel">
                 <button type="submit" class="btn btn-outline-danger w-100">キャンセル</button>
               </form>
+              {% endif %}
             </div>
           {% elif st == 'APPROVED' or st == '承認済み' %}
-            <form method="post" action="{% url 'frontend:received_purchases' %}" class="m-0 flex-grow-1 d-flex gap-2 flex-wrap">
-              {% csrf_token %}
-              <input type="hidden" name="purchase_id" value="{{ order.id }}">
-              <input type="hidden" name="action" value="ship">
-              <input type="text" name="tracking_number" class="form-control flex-grow-1" placeholder="追跡番号" required>
-              <button type="submit" class="btn btn-primary">配送する</button>
-            </form>
+            {% if order.from_rental %}
+              <div class="flex-grow-1 small text-muted d-flex align-items-center">
+                承認済みです（配送不要）。
+              </div>
+            {% else %}
+              <form method="post" action="{% url 'frontend:received_purchases' %}" class="m-0 flex-grow-1 d-flex gap-2 flex-wrap">
+                {% csrf_token %}
+                <input type="hidden" name="purchase_id" value="{{ order.id }}">
+                <input type="hidden" name="action" value="ship">
+                <input type="text" name="tracking_number" class="form-control flex-grow-1" placeholder="追跡番号" required>
+                <button type="submit" class="btn btn-primary">配送する</button>
+              </form>
+            {% endif %}
           {% else %}
             <div class="flex-grow-1 small text-muted d-flex align-items-center">
               この注文は<strong class="ms-1">{{ st }}</strong>です。
@@ -134,6 +144,21 @@
           {% endif %}
         {% endif %}
       {% endwith %}
+      {% if order.can_hide %}
+        {% if mode == 'received' %}
+          <form method="post" action="{% url 'frontend:purchase_hide_received' order.id %}" class="m-0 flex-grow-1">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button type="submit" class="btn btn-outline-secondary w-100">非表示</button>
+          </form>
+        {% else %}
+          <form method="post" action="{% url 'frontend:purchase_hide_mine' order.id %}" class="m-0 flex-grow-1">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button type="submit" class="btn btn-outline-secondary w-100">非表示</button>
+          </form>
+        {% endif %}
+      {% endif %}
     </div>
   </div>
 </div>
