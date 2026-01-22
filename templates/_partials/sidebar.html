@@ -2,11 +2,8 @@
 <nav class="sidebar-nav d-flex flex-column h-100">
 
   <div class="d-flex align-items-center mb-3 sidebar-nav-header">
-    <div class="sidebar-logo me-2 d-flex align-items-center justify-content-center">
-      MS
-    </div>
     <div class="flex-grow-1">
-      <div class="sidebar-title">MURAシェア</div>
+      <div class="sidebar-title"><span class="font-roman">MURA</span>シェア</div>
       <div class="sidebar-subtitle">シェア & レンタル</div>
     </div>
   </div>
@@ -68,6 +65,15 @@
        class="sidebar-link {% if request.resolver_match.url_name == 'profile' %}is-active{% endif %}">
       <span class="sidebar-icon bi bi-person"></span>
       <span class="sidebar-text">プロフィール</span>
+    </a>
+
+    <!-- 会社概要 -->
+    <a
+      href="{% url 'frontend:company' %}"
+      class="sidebar-link {% if request.resolver_match.url_name == 'company' %}is-active{% endif %}"
+    >
+      <span class="sidebar-icon bi bi-building"></span>
+      <span class="sidebar-text">会社概要</span>
     </a>
 
         <!-- お問い合わせ -->

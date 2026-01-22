@@ -2629,6 +2629,10 @@ def signup(request):
 
 # ========= お問い合わせ =========
 
+def company_page(request):
+    return render(request, "frontend/company.html")
+
+
 @csrf_exempt
 def contact_page(request):
     return render(request, "contact/contact.html")

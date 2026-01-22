@@ -66,6 +66,7 @@ urlpatterns = [
     path("mypage/products/", views.my_products, name="my_products"),
 
     # お問い合わせ
+    path("company/", views.company_page, name="company"),
     path("contact/", views.contact_page, name="contact"),
     path("api/contact/", views.contact_api, name="contact_api"),
     path("rentals/my/", views.my_applications, name="my_applications"),

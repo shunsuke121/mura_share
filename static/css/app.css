@@ -44,6 +44,10 @@ body {
   min-height: 100vh;
 }
 
+.font-roman {
+  font-family: "Helvetica Neue", Arial, "Segoe UI", sans-serif;
+}
+
 /* ===== レイアウト周り ===== */
 
 .layout {
@@ -149,8 +153,8 @@ body {
 }
 
 .sidebar-link.is-active {
-  background: linear-gradient(135deg, #f97316, #ec4899);
-  color: #0b1120;
+  background: #e5e7eb;
+  color: #111827;
   font-weight: 600;
 }
 
@@ -892,7 +896,7 @@ a:hover {
 
 .ms-header,
 .sidebar {
-  background: #fffbe6 !important;
+  background: #fff !important;
 }
 
 .ms-header .ms-nav-link {
@@ -1034,13 +1038,7 @@ textarea.form-control {
 
 /* === Extra rough overrides === */
 body {
-  background: repeating-linear-gradient(
-    45deg,
-    #fefefe,
-    #fefefe 12px,
-    #f6f6f6 12px,
-    #f6f6f6 24px
-  );
+  background: #fff;
 }
 
 .page-inner {
@@ -1058,8 +1056,19 @@ body {
 }
 
 .sidebar-link {
-  border-bottom: 1px dotted #bdbdbd;
-  border-radius: 2px !important;
+  border-bottom: none;
+  border-radius: 6px !important;
+}
+
+.sidebar-link:hover {
+  background: #f3f4f6;
+  transform: none;
+}
+
+.sidebar-link.is-active {
+  background: #e5e7eb;
+  color: #111827;
+  font-weight: 600;
 }
 
 .ms-nav-link {
