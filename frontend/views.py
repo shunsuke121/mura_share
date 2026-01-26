@@ -1079,11 +1079,17 @@ class MessagesPage(LoginRequiredMixin, TemplateView):
         pending_rental_status = getattr(Rental.Status, "REQUESTED", None)
         pending_app_status = getattr(RentalApplication.Status, "PENDING", None)
         if pending_purchase_status:
-            purchases = purchases.filter(status=pending_purchase_status)
+            purchases = purchases.filter(
+                Q(status=pending_purchase_status) | Q(chat_rooms__isnull=False)
+            ).distinct()
         if pending_rental_status:
-            rentals = rentals.filter(status=pending_rental_status)
+            rentals = rentals.filter(
+                Q(status=pending_rental_status) | Q(chat_rooms__isnull=False)
+            ).distinct()
         if pending_app_status:
-            applications = applications.filter(status=pending_app_status)
+            applications = applications.filter(
+                Q(status=pending_app_status) | Q(chat_rooms__isnull=False)
+            ).distinct()
 
         purchase_ids = list(purchases.values_list("id", flat=True))
         rental_ids = list(rentals.values_list("id", flat=True))
