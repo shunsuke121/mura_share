@@ -292,6 +292,36 @@
   </div>
 </div>
 
+<div id="reviews" class="card shadow-sm mt-4">
+  <div class="card-body">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h5 class="mb-0">レビュー</h5>
+      <span class="text-muted small">{{ review_count|default:0 }}件</span>
+    </div>
+    {% if review_count %}
+      <div class="mb-2 small text-muted">平均評価: {{ average_rating|floatformat:1 }}/5</div>
+    {% endif %}
+    {% if reviews %}
+      <div class="vstack gap-3">
+        {% for r in reviews %}
+          <div class="border rounded p-2">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="fw-semibold">{{ r.user.profile.display_name|default:r.user.username }}</div>
+              <div class="text-muted small">{{ r.created_at|date:"n/j H:i" }}</div>
+            </div>
+            <div class="mt-1 small">評価: {{ r.rating }}/5</div>
+            {% if r.comment %}
+              <div class="mt-1">{{ r.comment|linebreaksbr }}</div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-muted">まだレビューがありません。</div>
+    {% endif %}
+  </div>
+</div>
+
 <div id="comments" class="card shadow-sm mt-4">
   <div class="card-body">
     <div class="d-flex align-items-center justify-content-between mb-3">

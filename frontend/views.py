@@ -8,7 +8,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.db import transaction
-from django.db.models import Q, Prefetch, Exists, OuterRef, Value, BooleanField, Count, Subquery
+from django.db.models import Q, Prefetch, Exists, OuterRef, Value, BooleanField, Count, Subquery, Avg
 from django.db.models.functions import Coalesce
 from django.http import (
     JsonResponse, HttpResponseBadRequest, HttpResponseForbidden, Http404
@@ -29,7 +29,15 @@ from .models import ContactInquiry
 from chat.models import ChatRoom, ChatMessage
 from chat.utils import is_purchase_chat_available
 from marketplace.models import (
-    Product, ProductImage, RentalApplication, Rental, Purchase, ProductFavorite, Shipment, ProductComment
+    Product,
+    ProductImage,
+    RentalApplication,
+    Rental,
+    Purchase,
+    ProductFavorite,
+    Shipment,
+    ProductComment,
+    Review,
 )
 
 # 通知アプリが無い環境でも落ちないように
@@ -582,6 +590,50 @@ def _purchase_completed_statuses():
     }
 
 
+
+
+def _rental_completed_statuses():
+    return {
+        getattr(Rental.Status, "COMPLETED", "COMPLETED"),
+        "COMPLETED",
+        "completed",
+    }
+
+
+def _rental_app_completed_statuses():
+    return {
+        getattr(RentalApplication.Status, "COMPLETED", "completed"),
+        "COMPLETED",
+        "completed",
+    }
+
+
+def _user_can_review_product(user, product):
+    if not user or not product:
+        return False
+    if getattr(product, "owner_id", None) == getattr(user, "id", None):
+        return False
+    if Purchase.objects.filter(
+        product_id=product.id,
+        buyer_id=user.id,
+        status__in=_purchase_completed_statuses(),
+    ).exists():
+        return True
+    if Rental.objects.filter(
+        product_id=product.id,
+        renter_id=user.id,
+        status__in=_rental_completed_statuses(),
+    ).exists():
+        return True
+    if RentalApplication.objects.filter(
+        product_id=product.id,
+        renter_id=user.id,
+        status__in=_rental_app_completed_statuses(),
+    ).exists():
+        return True
+    return False
+
+
 def _purchase_return_in_progress(purchase):
     rs = str(getattr(purchase, "return_status", "") or "").upper()
     return rs in ("REQUESTED", "APPROVED", "SHIPPED")
@@ -1044,6 +1096,16 @@ class ProductDetailView(DetailView):
             .filter(product=p)
             .order_by("-created_at")
         )
+        review_qs = (
+            Review.objects
+            .select_related("user", "user__profile")
+            .filter(product=p)
+            .order_by("-created_at")
+        )
+        review_stats = review_qs.aggregate(avg=Avg("rating"), count=Count("id"))
+        ctx["reviews"] = review_qs
+        ctx["review_count"] = review_stats.get("count") or 0
+        ctx["average_rating"] = review_stats.get("avg")
 
         return ctx
 
@@ -1840,6 +1902,60 @@ def purchase_receive_done(request, purchase_id):
 
 # ========= 返品管理 =========
 
+
+
+
+@login_required
+@require_POST
+def review_create(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+    next_url = (
+        request.POST.get("next")
+        or request.META.get("HTTP_REFERER")
+        or f"{reverse('frontend:profile')}?tab=history"
+    )
+    if getattr(product, "owner_id", None) == getattr(request.user, "id", None):
+        messages.error(request, "\u81ea\u5206\u306e\u5546\u54c1\u306b\u306f\u30ec\u30d3\u30e5\u30fc\u3067\u304d\u307e\u305b\u3093\u3002")
+        return redirect(next_url)
+    if not _user_can_review_product(request.user, product):
+        messages.error(request, "\u53d6\u5f15\u5b8c\u4e86\u5f8c\u306e\u307f\u30ec\u30d3\u30e5\u30fc\u3067\u304d\u307e\u3059\u3002")
+        return redirect(next_url)
+
+    rating_raw = (request.POST.get("rating") or "").strip()
+    try:
+        rating = int(rating_raw)
+    except Exception:
+        rating = 0
+    if rating < 1 or rating > 5:
+        messages.error(request, "\u8a55\u4fa1\u306f1\u301c5\u3067\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002")
+        return redirect(next_url)
+
+    comment = (request.POST.get("comment") or "").strip()
+    if not comment:
+        messages.error(request, "\u4e00\u8a00\u30ec\u30d3\u30e5\u30fc\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002")
+        return redirect(next_url)
+    if len(comment) > 200:
+        messages.error(request, "\u30ec\u30d3\u30e5\u30fc\u306f200\u6587\u5b57\u4ee5\u5185\u3067\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002")
+        return redirect(next_url)
+
+    review_qs = Review.objects.filter(product=product, user=request.user).order_by("-created_at")
+    if review_qs.exists():
+        review = review_qs.first()
+        review.rating = rating
+        review.comment = comment
+        review.save(update_fields=["rating", "comment"])
+        messages.success(request, "\u30ec\u30d3\u30e5\u30fc\u3092\u66f4\u65b0\u3057\u307e\u3057\u305f\u3002")
+    else:
+        Review.objects.create(
+            product=product,
+            user=request.user,
+            rating=rating,
+            comment=comment,
+        )
+        messages.success(request, "\u30ec\u30d3\u30e5\u30fc\u3092\u6295\u7a3f\u3057\u307e\u3057\u305f\u3002")
+    return redirect(next_url)
+
+
 @login_required
 def returns_index(request):
     tab = request.GET.get("tab", "mine")
@@ -2618,6 +2734,7 @@ def profile(request):
                     "kind": "rental",
                     "completed_at": r.completed_date or r.returned_date or r.created_at,
                     "product": r.product,
+                    "reviewable": r.renter_id == user.id,
                 })
         for app in rental_apps:
             if app.product:
@@ -2625,6 +2742,7 @@ def profile(request):
                     "kind": "rental",
                     "completed_at": getattr(app, "completed_date", None) or app.created_at,
                     "product": app.product,
+                    "reviewable": app.renter_id == user.id,
                 })
         for p in purchases:
             if p.product:
@@ -2632,9 +2750,29 @@ def profile(request):
                     "kind": "purchase",
                     "completed_at": p.completed_date or p.shipped_at or p.created_at,
                     "product": p.product,
+                    "reviewable": p.buyer_id == user.id,
                 })
 
         items.sort(key=lambda x: x["completed_at"] or timezone.now(), reverse=True)
+        product_ids = [item["product"].id for item in items if item.get("product")]
+        review_by_product = {}
+        if product_ids:
+            review_qs = (
+                Review.objects
+                .filter(user=user, product_id__in=product_ids)
+                .order_by("-created_at")
+            )
+            for rv in review_qs:
+                if rv.product_id not in review_by_product:
+                    review_by_product[rv.product_id] = rv
+        for item in items:
+            product = item.get("product")
+            if not product:
+                item["review"] = None
+                item["can_review"] = False
+                continue
+            item["review"] = review_by_product.get(product.id)
+            item["can_review"] = bool(item.get("reviewable")) and item["review"] is None
         transactions = items
 
     ctx = {
