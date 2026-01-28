@@ -1126,9 +1126,18 @@ class MessagesPage(LoginRequiredMixin, TemplateView):
             .filter(Q(owner=user) | Q(renter=user))
             .order_by("-created_at")
         )
+        pending_purchase_status = getattr(Purchase.Status, "REQUESTED", None)
         pending_rental_status = getattr(Rental.Status, "REQUESTED", None)
         renting_status = getattr(Rental.Status, "RENTING", None)
         pending_app_status = getattr(RentalApplication.Status, "PENDING", None)
+
+        if pending_purchase_status:
+            purchases = purchases.filter(
+                Q(status=pending_purchase_status) | Q(chat_rooms__isnull=False)
+            ).distinct()
+        else:
+            purchases = purchases.filter(chat_rooms__isnull=False).distinct()
+
         rental_status_values = {
             pending_rental_status,
             renting_status,
@@ -1137,7 +1146,11 @@ class MessagesPage(LoginRequiredMixin, TemplateView):
         }
         rental_status_values = {v for v in rental_status_values if v}
         if rental_status_values:
-            rentals = rentals.filter(status__in=rental_status_values)
+            rentals = rentals.filter(
+                Q(status__in=rental_status_values) | Q(chat_rooms__isnull=False)
+            ).distinct()
+        else:
+            rentals = rentals.filter(chat_rooms__isnull=False).distinct()
 
         app_status_values = {
             pending_app_status,
@@ -1148,7 +1161,11 @@ class MessagesPage(LoginRequiredMixin, TemplateView):
         }
         app_status_values = {v for v in app_status_values if v}
         if app_status_values:
-            applications = applications.filter(status__in=app_status_values)
+            applications = applications.filter(
+                Q(status__in=app_status_values) | Q(chat_rooms__isnull=False)
+            ).distinct()
+        else:
+            applications = applications.filter(chat_rooms__isnull=False).distinct()
 
         purchase_ids = list(purchases.values_list("id", flat=True))
         rental_ids = list(rentals.values_list("id", flat=True))
