@@ -28,7 +28,7 @@
             <label class="form-label">メイン画像 {% if not is_edit %}<span class="text-danger">*</span>{% endif %}</label>
             <input type="file" name="image_main" accept="image/*" class="form-control" {% if not is_edit %}required{% endif %}>
             <small class="form-text text-muted">
-              {% if is_edit %}選択した場合は新しい画像が追加されます（既存は残ります）。{% else %}一覧や詳細画面で最初に表示される画像です。投稿時は4枚必須です。{% endif %}
+              {% if is_edit %}選択した場合は新しい画像に変更されます。{% else %}一覧や詳細画面で最初に表示される画像です。投稿時は4枚必須です。{% endif %}
             </small>
           </div>
           <div class="row g-3">

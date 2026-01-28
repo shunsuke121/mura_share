@@ -27,8 +27,9 @@ import re
 from accounts.models import Profile
 from .models import ContactInquiry
 from chat.models import ChatRoom, ChatMessage
+from chat.utils import is_purchase_chat_available
 from marketplace.models import (
-    Product, ProductImage, RentalApplication, Rental, Purchase, ProductFavorite, Shipment
+    Product, ProductImage, RentalApplication, Rental, Purchase, ProductFavorite, Shipment, ProductComment
 )
 
 # 通知アプリが無い環境でも落ちないように
@@ -1037,7 +1038,57 @@ class ProductDetailView(DetailView):
         ctx["allow_rental"] = allow_rental
         ctx["allow_purchase"] = allow_purchase
 
+        ctx["comments"] = (
+            ProductComment.objects
+            .select_related("user", "user__profile")
+            .filter(product=p)
+            .order_by("-created_at")
+        )
+
         return ctx
+
+
+@login_required
+@require_POST
+def product_comment_create(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    if getattr(product, "is_sold_out", False):
+        messages.error(request, "売り切れの商品にはコメントできません。")
+        return redirect(f"{reverse('frontend:product_detail', args=[product.id])}#comments")
+    body = (request.POST.get("body") or "").strip()
+    image = request.FILES.get("image")
+    if not body and not image:
+        messages.error(request, "コメント本文か画像を追加してください。")
+        return redirect(f"{reverse('frontend:product_detail', args=[product.id])}#comments")
+
+    ProductComment.objects.create(product=product, user=request.user, body=body or "", image=image)
+
+    if Notification is not None and product.owner_id != request.user.id:
+        sender_name = getattr(request.user, "username", "User")
+        product_title = getattr(product, "title", "") or "商品"
+        snippet = body.replace("\n", " ").strip() if body else "（画像）"
+        if len(snippet) > 120:
+            snippet = f"{snippet[:117]}..."
+        Notification.objects.create(
+            user_id=product.owner_id,
+            kind="comment",
+            body=f"{product_title} / {sender_name}: {snippet}",
+        )
+
+    messages.success(request, "コメントを投稿しました。")
+    return redirect(f"{reverse('frontend:product_detail', args=[product.id])}#comments")
+
+
+@login_required
+@require_POST
+def product_comment_delete(request, pk, comment_id):
+    product = get_object_or_404(Product, pk=pk)
+    if product.owner_id != request.user.id:
+        return HttpResponseForbidden("forbidden")
+    comment = get_object_or_404(ProductComment, id=comment_id, product=product)
+    comment.delete()
+    messages.success(request, "コメントを削除しました。")
+    return redirect(f"{reverse('frontend:product_detail', args=[product.id])}#comments")
 
 
 # ========= 単純ページ / テンプレ表示 =========
@@ -1075,15 +1126,29 @@ class MessagesPage(LoginRequiredMixin, TemplateView):
             .filter(Q(owner=user) | Q(renter=user))
             .order_by("-created_at")
         )
-        pending_purchase_status = getattr(Purchase.Status, "REQUESTED", None)
         pending_rental_status = getattr(Rental.Status, "REQUESTED", None)
+        renting_status = getattr(Rental.Status, "RENTING", None)
         pending_app_status = getattr(RentalApplication.Status, "PENDING", None)
-        if pending_purchase_status:
-            purchases = purchases.filter(status=pending_purchase_status)
-        if pending_rental_status:
-            rentals = rentals.filter(status=pending_rental_status)
-        if pending_app_status:
-            applications = applications.filter(status=pending_app_status)
+        rental_status_values = {
+            pending_rental_status,
+            renting_status,
+            "RENTING",
+            "レンタル中",
+        }
+        rental_status_values = {v for v in rental_status_values if v}
+        if rental_status_values:
+            rentals = rentals.filter(status__in=rental_status_values)
+
+        app_status_values = {
+            pending_app_status,
+            "renting",
+            "received",
+            "RENTING",
+            "RECEIVED",
+        }
+        app_status_values = {v for v in app_status_values if v}
+        if app_status_values:
+            applications = applications.filter(status__in=app_status_values)
 
         purchase_ids = list(purchases.values_list("id", flat=True))
         rental_ids = list(rentals.values_list("id", flat=True))
@@ -1143,6 +1208,8 @@ class MessagesPage(LoginRequiredMixin, TemplateView):
             other = p.product.owner if p.buyer_id == user.id else p.buyer
             room = room_by_purchase.get(p.id)
             last_msg_at = getattr(room, "last_message_at", None) if room else None
+            if not is_purchase_chat_available(p, last_message_at=last_msg_at):
+                continue
             transactions.append({
                 "kind_label": "購入",
                 "created_at": p.created_at,
@@ -1186,39 +1253,6 @@ class MessagesPage(LoginRequiredMixin, TemplateView):
                 "chat_url": reverse("chat:chat_detail", args=[room.id]) if room else reverse("chat:start_rental_app_chat", args=[a.id]),
                 "last_message": getattr(room, "last_message_body", "") if room else "",
                 "unread": getattr(room, "unread_count", 0) if room else 0,
-            })
-
-        pre_rooms = (
-            ChatRoom.objects
-            .select_related("product", "user1", "user2")
-            .filter(
-                Q(user1=user) | Q(user2=user),
-                rental__isnull=True,
-                purchase__isnull=True,
-                application__isnull=True,
-            )
-            .annotate(
-                last_message_body=Subquery(last_body_qs),
-                last_message_at=Subquery(last_at_qs),
-                unread_count=Count(
-                    "messages",
-                    filter=Q(messages__is_read=False) & ~Q(messages__user=user),
-                ),
-            )
-        )
-
-        for room in pre_rooms:
-            other = room.user1 if room.user1_id != user.id else room.user2
-            transactions.append({
-                "kind_label": "相談",
-                "created_at": room.created_at,
-                "activity_at": getattr(room, "last_message_at", None) or room.created_at,
-                "product_title": getattr(room.product, "title", ""),
-                "other_name": display_name(other),
-                "status_label": "取引前",
-                "chat_url": reverse("chat:chat_detail", args=[room.id]),
-                "last_message": getattr(room, "last_message_body", "") or "",
-                "unread": getattr(room, "unread_count", 0) or 0,
             })
 
         transactions.sort(
@@ -1824,6 +1858,8 @@ def return_action(request):
     if request.method != "POST":
         return redirect("frontend:returns")
 
+    next_url = request.POST.get("next") or request.META.get("HTTP_REFERER")
+
     pid = request.POST.get("purchase_id")
     action = request.POST.get("action")
     tracking = (request.POST.get("tracking_number") or "").strip()
@@ -1966,6 +2002,8 @@ def return_action(request):
     except Exception as e:
         messages.error(request, f"処理に失敗しました: {e}")
 
+    if next_url:
+        return redirect(next_url)
     return redirect("frontend:returns")
 
 def _create_shipment_for_application(app, direction, tracking_no="", status=None):
@@ -2147,8 +2185,12 @@ def rental_apply(request, pk):
         ed = parse_date(end_date) if end_date else None
         if not sd or not ed:
             errors.append("レンタル開始日・終了日を入力してください。")
-        elif sd > ed:
-            errors.append("レンタル終了日は開始日以降を選択してください。")
+        else:
+            today = timezone.localdate()
+            if sd < today:
+                errors.append("レンタル開始日は本日以降を選択してください。")
+            if sd > ed:
+                errors.append("レンタル終了日は開始日以降を選択してください。")
 
         if errors:
             for e in errors: messages.error(request, e)
@@ -2387,9 +2429,20 @@ def product_edit(request, pk: int):
 
                 product.save()
 
-                for img in [image_main, image_sub1, image_sub2, image_sub3]:
-                    if img:
-                        ProductImage.objects.create(product=product, image=img)
+                # Replace existing images in order (main, sub1, sub2, sub3) and keep max 4.
+                new_images = [image_main, image_sub1, image_sub2, image_sub3]
+                existing_images = list(product.images.order_by("id"))
+                for idx, img in enumerate(new_images):
+                    if idx < len(existing_images):
+                        if img:
+                            existing_images[idx].image = img
+                            existing_images[idx].save(update_fields=["image"])
+                    else:
+                        if img:
+                            ProductImage.objects.create(product=product, image=img)
+                if len(existing_images) > 4:
+                    for extra in existing_images[4:]:
+                        extra.delete()
 
                 messages.success(request, "保存しました。")
                 return redirect("frontend:profile")
@@ -2455,6 +2508,17 @@ def profile(request):
     favorites = []
     renting_products = []
     transactions = []
+    has_active_rental = (
+        Rental.objects
+        .filter(status=Rental.Status.RENTING.value, renter=user)
+        .exists()
+        or
+        RentalApplication.objects
+        .filter(order_type=RentalApplication.OrderType.RENTAL)
+        .filter(status__iexact="renting")
+        .filter(renter=user)
+        .exists()
+    )
     if active_tab == "posts":
         my_products = Product.objects.filter(owner=user).order_by("-id")
     elif active_tab == "favorites":
@@ -2565,6 +2629,7 @@ def profile(request):
         "favorites": favorites,
         "renting_products": renting_products,
         "transactions": transactions,
+        "has_active_rental": has_active_rental,
     }
     return render(request, "frontend/profile/index.html", ctx)
 
@@ -2812,6 +2877,14 @@ class AdminShippingView(AdminRequiredMixin, TemplateView):
             s.seller_address = seller["address"]
             s.buyer_name = buyer["name"]
             s.buyer_address = buyer["address"]
+            if s.rental_id and s.rental:
+                s.return_tracking_no = getattr(s.rental, "tracking_number_return", "") or ""
+            elif s.purchase_id and s.purchase:
+                s.return_tracking_no = getattr(s.purchase, "return_tracking_number", "") or ""
+            elif s.application_id and s.application:
+                s.return_tracking_no = getattr(s.application, "return_tracking_number", "") or ""
+            else:
+                s.return_tracking_no = ""
 
         ctx["shipments"] = shipments
         return ctx

@@ -4,6 +4,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.views.generic import DetailView
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -13,12 +14,25 @@ from django.db import models
 from marketplace.models import Product, Purchase, Rental, RentalApplication
 from rest_framework import viewsets, permissions, decorators, response
 from .models import ChatRoom, ChatMessage
+from .utils import is_purchase_chat_available
 from .serializers import ChatRoomSerializer, ChatMessageSerializer
 
 
 def _ensure_room_member(user, room):
     if user.id not in (room.user1_id, room.user2_id):
         raise PermissionDenied
+
+
+def _ensure_room_available(room):
+    # Pre-transaction rooms are no longer allowed (comments are public).
+    if not room.purchase_id and not room.rental_id and not room.application_id:
+        raise PermissionDenied
+    if room.purchase_id:
+        last_msg_at = (
+            room.messages.order_by("-created_at").values_list("created_at", flat=True).first()
+        )
+        if not is_purchase_chat_available(room.purchase, last_message_at=last_msg_at):
+            raise PermissionDenied
 
 
 class ChatRoomViewSet(viewsets.ModelViewSet):
@@ -40,6 +54,9 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         qs = ChatMessage.objects.select_related("room","user")
         room_id = self.kwargs.get("room_pk")
         if room_id:
+            room = get_object_or_404(ChatRoom, id=room_id)
+            _ensure_room_member(user, room)
+            _ensure_room_available(room)
             qs = qs.filter(room_id=room_id)
         return qs.filter(models.Q(room__user1=user) | models.Q(room__user2=user))
 
@@ -47,6 +64,7 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         room_id = self.kwargs.get("room_pk") or self.request.data.get("room")
         room = get_object_or_404(ChatRoom, id=room_id)
         _ensure_room_member(self.request.user, room)
+        _ensure_room_available(room)
         serializer.save(room=room, user=self.request.user)
 
     @decorators.action(detail=True, methods=["post"])
@@ -62,13 +80,20 @@ class ChatListView(LoginRequiredMixin, View):
 
         rooms = ChatRoom.objects.filter(
             models.Q(user1=user) | models.Q(user2=user)
-        ).order_by('-created_at')
+        ).select_related("purchase", "rental", "application").order_by('-created_at')
 
         room_data = []
 
         for room in rooms:
+            if not room.purchase_id and not room.rental_id and not room.application_id:
+                continue
             other = room.user1 if room.user1 != user else room.user2
             last_msg = room.messages.order_by('-created_at').first()
+            if room.purchase_id and not is_purchase_chat_available(
+                room.purchase,
+                last_message_at=(last_msg.created_at if last_msg else None),
+            ):
+                continue
             unread = room.messages.filter(is_read=False).exclude(user=user).count()
 
             room_data.append({
@@ -90,14 +115,16 @@ class StartChatView(LoginRequiredMixin, View):
         if user == seller:
             return redirect("frontend:product_detail", pk=product.id)
 
-        if getattr(product, "is_sold_out", False):
-            messages.warning(request, "売り切れとなっています。")
-            return redirect("frontend:product_detail", pk=product.id)
-
+        canceled_values = {
+            getattr(Purchase.Status, "CANCELED", "CANCELED"),
+            "CANCELED",
+            "キャンセル",
+        }
         purchase = (
             Purchase.objects
             .filter(product=product)
             .filter(models.Q(buyer=user) | models.Q(product__owner=user))
+            .exclude(status__in=canceled_values)
             .order_by("-created_at")
             .first()
         )
@@ -124,29 +151,8 @@ class StartChatView(LoginRequiredMixin, View):
         if rental:
             return redirect("chat:start_rental_chat", rental_id=rental.id)
 
-        room = (
-            ChatRoom.objects.filter(
-                product=product,
-                user1=seller,
-                user2=user,
-                rental__isnull=True,
-                purchase__isnull=True,
-                application__isnull=True,
-            ).first()
-            or ChatRoom.objects.filter(
-                product=product,
-                user1=user,
-                user2=seller,
-                rental__isnull=True,
-                purchase__isnull=True,
-                application__isnull=True,
-            ).first()
-        )
-
-        if not room:
-            room = ChatRoom.objects.create(product=product, user1=seller, user2=user)
-
-        return redirect("chat:chat_detail", room_id=room.id)
+        messages.info(request, "購入前の質問はコメント欄をご利用ください。")
+        return redirect(f"{reverse('frontend:product_detail', args=[product.id])}#comments")
 
 class StartPurchaseChatView(LoginRequiredMixin, View):
     def get(self, request, purchase_id):
@@ -157,6 +163,13 @@ class StartPurchaseChatView(LoginRequiredMixin, View):
         if request.user.id not in (purchase.buyer_id, purchase.product.owner_id):
             raise PermissionDenied
         room = ChatRoom.objects.filter(purchase=purchase).first()
+        last_msg_at = None
+        if room:
+            last_msg_at = (
+                room.messages.order_by("-created_at").values_list("created_at", flat=True).first()
+            )
+        if not is_purchase_chat_available(purchase, last_message_at=last_msg_at):
+            raise PermissionDenied
         if not room:
             room = ChatRoom.objects.create(
                 product=purchase.product,
@@ -221,6 +234,7 @@ class ChatDetailView(LoginRequiredMixin, View):
             id=room_id,
         )
         _ensure_room_member(request.user, room)
+        _ensure_room_available(room)
 
         messages = room.messages.order_by("created_at")
         room.messages.filter(is_read=False).exclude(user=request.user).update(is_read=True)
@@ -271,6 +285,7 @@ class ChatDetailView(LoginRequiredMixin, View):
     def post(self, request, room_id):
         room = get_object_or_404(ChatRoom, id=room_id)
         _ensure_room_member(request.user, room)
+        _ensure_room_available(room)
         body = request.POST.get("body")
 
         if body:
@@ -286,6 +301,7 @@ class ChatDetailView(LoginRequiredMixin, View):
 def send_message(request, room_id):
     room = get_object_or_404(ChatRoom, id=room_id)
     _ensure_room_member(request.user, room)
+    _ensure_room_available(room)
 
     if request.method == "POST":
         body = request.POST.get("body")

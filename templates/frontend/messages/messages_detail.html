@@ -8,14 +8,7 @@
       <div class="flex-grow-1">
         <div class="fw-semibold">{{ room.product.title }}</div>
         <div class="small text-muted">相手: {{ counterparty_name }}</div>
-        {% if transaction_info %}
-          <div class="small text-muted">取引: {{ transaction_info.label }} #{{ transaction_info.id }} · {{ transaction_info.status }}</div>
-          {% for label, value in transaction_info.tracking %}
-            {% if value %}
-              <div class="small text-muted">{{ label }}: {{ value }}</div>
-            {% endif %}
-          {% endfor %}
-        {% endif %}
+        {# 取引状態/追跡番号などは表示しない #}
       </div>
       <div class="ms-md-auto">
         <a href="{% url 'frontend:product_detail' room.product.id %}" class="btn btn-outline-secondary btn-sm">商品を見る</a>

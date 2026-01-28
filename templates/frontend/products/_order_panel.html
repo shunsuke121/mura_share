@@ -108,6 +108,19 @@
 
 <script>
 (function(){
+  const inputs = document.querySelectorAll('input[type="date"][name="start_date"]');
+  if (!inputs.length) return;
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const min = `${yyyy}-${mm}-${dd}`;
+  inputs.forEach((input) => input.setAttribute('min', min));
+})();
+</script>
+
+<script>
+(function(){
   const zipInput = document.getElementById('postal_code');
   const addrInput = document.getElementById('address');
   const help = document.getElementById('postal_help');

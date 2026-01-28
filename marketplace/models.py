@@ -101,6 +101,17 @@ class ProductImage(models.Model):
     image = models.ImageField(upload_to="products/")
 
 
+class ProductComment(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="comments")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="product_comments")
+    body = models.TextField()
+    image = models.ImageField(upload_to="product_comments/", blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("created_at",)
+
+
 class Rental(models.Model):
     class Status(models.TextChoices):
         REQUESTED        = "申請中", "申請中"

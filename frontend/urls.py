@@ -12,6 +12,8 @@ urlpatterns = [
     path("products/", views.ProductListView.as_view(), name="products"),
     path("products/new/", views.product_create, name="product_new"),
     path("products/<int:pk>/", views.ProductDetailView.as_view(), name="product_detail"),
+    path("products/<int:pk>/comments/", views.product_comment_create, name="product_comment_create"),
+    path("products/<int:pk>/comments/<int:comment_id>/delete/", views.product_comment_delete, name="product_comment_delete"),
     # frontend/urls.py
     path('products/<int:pk>/favorite/toggle/', views.product_favorite_toggle, name='product_favorite_toggle'),
 

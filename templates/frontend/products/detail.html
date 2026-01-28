@@ -108,8 +108,8 @@
       </div>
       <div class="ms-auto">
         {% if user.is_authenticated and user.id != product.owner.id %}
-          <a href="{% url 'chat:start_chat' product.id %}" class="btn btn-outline-dark">
-            💬 メッセージ
+          <a href="#comments" class="btn btn-outline-dark">
+            コメント
           </a>
         {% endif %}
       </div>
@@ -292,7 +292,85 @@
   </div>
 </div>
 
+<div id="comments" class="card shadow-sm mt-4">
+  <div class="card-body">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h5 class="mb-0">コメント</h5>
+      <span class="text-muted small">{{ comments|length }}件</span>
+    </div>
+
+    {% if comments %}
+      <div class="vstack gap-3">
+        {% for c in comments %}
+          <div class="border rounded p-2">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="fw-semibold">{{ c.user.profile.display_name|default:c.user.username }}</div>
+              <div class="text-muted small">{{ c.created_at|date:"n/j H:i" }}</div>
+            </div>
+            {% if c.body %}
+              <div class="mt-1">{{ c.body|linebreaksbr }}</div>
+            {% endif %}
+            {% if c.image %}
+              <div class="mt-2">
+                <img src="{{ c.image.url }}" alt="comment image" class="img-fluid rounded">
+              </div>
+            {% endif %}
+            {% if request.user.is_authenticated and request.user.id == product.owner.id %}
+              <form method="post" action="{% url 'frontend:product_comment_delete' product.id c.id %}" class="mt-2 text-end">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger btn-sm"
+                        onclick="return confirm('このコメントを削除しますか？');">
+                  削除
+                </button>
+              </form>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-muted">まだコメントはありません。</div>
+    {% endif %}
+
+    <hr class="my-3">
+
+    {% if product.is_sold_out %}
+      <div class="text-muted">売り切れのためコメントはできません。</div>
+    {% elif user.is_authenticated %}
+      <form method="post" action="{% url 'frontend:product_comment_create' product.id %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="mb-2">
+          <textarea name="body" class="form-control" rows="3" placeholder="購入前の質問・値下げ相談など"></textarea>
+        </div>
+        <div class="mb-2">
+          <input type="file" name="image" accept="image/*" class="form-control">
+        </div>
+        <div class="d-flex justify-content-between align-items-center">
+          <small class="text-muted">※ 画像のみの投稿も可能です</small>
+          <button type="submit" class="btn btn-dark">コメントする</button>
+        </div>
+      </form>
+    {% else %}
+      <div class="text-muted">
+        コメントするには <a href="{% url 'frontend:login' %}?next={{ request.get_full_path }}">ログイン</a> が必要です。
+      </div>
+    {% endif %}
+  </div>
+</div>
+
 {# タブ切替のJS（Bootstrap不要・素朴な切替） #}
+<script>
+(function(){
+  const inputs = document.querySelectorAll('input[type="date"][name="start_date"]');
+  if (!inputs.length) return;
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const min = `${yyyy}-${mm}-${dd}`;
+  inputs.forEach((input) => input.setAttribute('min', min));
+})();
+</script>
+
 <script>
 (function(){
   const tabs = document.querySelectorAll('.order-tab');
