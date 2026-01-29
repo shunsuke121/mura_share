@@ -497,7 +497,11 @@
                     </div>
                     {% if t.review %}
                       <div class="mt-2 small text-muted">
-                        評価: {{ t.review.rating }}/5
+                        <span class="text-warning">
+                          {% for _ in "12345"|make_list %}
+                            {% if forloop.counter <= t.review.rating %}★{% else %}☆{% endif %}
+                          {% endfor %}
+                        </span>
                         {% if t.review.comment %} - {{ t.review.comment }}{% endif %}
                       </div>
                     {% elif t.can_review %}

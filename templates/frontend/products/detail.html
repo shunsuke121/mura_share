@@ -299,7 +299,19 @@
       <span class="text-muted small">{{ review_count|default:0 }}件</span>
     </div>
     {% if review_count %}
-      <div class="mb-2 small text-muted">平均評価: {{ average_rating|floatformat:1 }}/5</div>
+      {% with avg=average_rating|default:0 %}
+        {% with avg_int=avg|floatformat:0|add:"0" %}
+          <div class="mb-2 small text-muted">
+            平均評価:
+            <span class="text-warning">
+              {% for _ in "12345"|make_list %}
+                {% if forloop.counter <= avg_int %}★{% else %}☆{% endif %}
+              {% endfor %}
+            </span>
+            <span class="ms-1">{{ avg|floatformat:1 }}</span>
+          </div>
+        {% endwith %}
+      {% endwith %}
     {% endif %}
     {% if reviews %}
       <div class="vstack gap-3">
@@ -309,7 +321,11 @@
               <div class="fw-semibold">{{ r.user.profile.display_name|default:r.user.username }}</div>
               <div class="text-muted small">{{ r.created_at|date:"n/j H:i" }}</div>
             </div>
-            <div class="mt-1 small">評価: {{ r.rating }}/5</div>
+            <div class="mt-1 small text-warning">
+              {% for _ in "12345"|make_list %}
+                {% if forloop.counter <= r.rating %}★{% else %}☆{% endif %}
+              {% endfor %}
+            </div>
             {% if r.comment %}
               <div class="mt-1">{{ r.comment|linebreaksbr }}</div>
             {% endif %}
