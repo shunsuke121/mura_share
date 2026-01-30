@@ -8,7 +8,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.db import transaction
-from django.db.models import Q, Prefetch, Exists, OuterRef, Value, BooleanField, Count, Subquery, Avg
+from django.db.models import Q, Prefetch, Exists, OuterRef, Value, BooleanField, Count, Subquery, Avg, FloatField
 from django.db.models.functions import Coalesce
 from django.http import (
     JsonResponse, HttpResponseBadRequest, HttpResponseForbidden, Http404
@@ -285,6 +285,10 @@ def _handle_rental_action(request, user, redirect_name):
             rental.received_date_by_renter = now
             rental.rental_start_date = now
             rental.save(update_fields=["status", "received_date_by_renter", "rental_start_date"])
+            Shipment.objects.filter(
+                rental=rental,
+                direction=getattr(Shipment.Direction, "OUTBOUND", "outbound"),
+            ).update(status=getattr(Shipment.Status, "DELIVERED", "delivered"))
 
             _create_notification(
                 rental.product.owner,
@@ -1030,10 +1034,19 @@ class ProductListView(ListView):
         if av and av != "all":
             qs = qs.filter(availability_type=av)
 
+        qs = qs.annotate(
+            avg_rating=Coalesce(Avg("reviews__rating"), Value(0.0), output_field=FloatField()),
+            review_count=Count("reviews", distinct=True),
+        )
+
         if sort == "price_low":
             qs = qs.order_by("price_buy", "-id")
         elif sort == "price_high":
             qs = qs.order_by("-price_buy", "-id")
+        elif sort == "rating_high":
+            qs = qs.order_by("-avg_rating", "-review_count", "-id")
+        elif sort == "rating_low":
+            qs = qs.order_by("avg_rating", "review_count", "-id")
         else:
             qs = qs.order_by("-id")
 
@@ -1735,6 +1748,11 @@ def rental_app_receive(request, app_id):
     if hasattr(app, "received_date_by_renter"):
         app.received_date_by_renter = timezone.now()
     app.save()
+
+    Shipment.objects.filter(
+        application=app,
+        direction=getattr(Shipment.Direction, "OUTBOUND", "outbound"),
+    ).update(status=getattr(Shipment.Status, "DELIVERED", "delivered"))
 
     try:
         _create_notification(
