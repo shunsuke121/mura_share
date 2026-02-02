@@ -30,7 +30,6 @@
               <span class="badge bg-secondary-subtle text-secondary rounded-pill">一般ユーザー</span>
             {% endif %}
           </div>
-          <div class="text-muted small mt-1">{{ user_obj.email }}</div>
           {% if has_active_rental %}
             <div class="d-flex flex-wrap gap-2 mt-2">
               <span class="badge bg-primary">レンタル中</span>
@@ -163,14 +162,6 @@
               </div>
             </div>
 
-            <div class="col-md-6">
-              <div class="p-3 bg-light border rounded-3 h-100">
-                <div class="text-muted small mb-1">
-                  <i class="bi bi-envelope me-2"></i>メールアドレス
-                </div>
-                <div class="fw-semibold">{{ user_obj.email }}</div>
-              </div>
-            </div>
 
             <div class="col-md-6">
               <div class="p-3 bg-light border rounded-3 h-100">
