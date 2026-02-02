@@ -1012,7 +1012,7 @@ class ProductListView(ListView):
     model = Product
     template_name = "frontend/products/index.html"
     context_object_name = "products"
-    paginate_by = 20
+    paginate_by = 15
 
     def get_queryset(self):
         qs = Product.objects.filter(status=Product.Status.LISTED)
@@ -1065,6 +1065,9 @@ class ProductListView(ListView):
         ctx["selected"] = getattr(self, "selected", {
             "q": "", "category": "all", "availability": "all", "sort": "newest",
         })
+        params = self.request.GET.copy()
+        params.pop("page", None)
+        ctx["querystring"] = params.urlencode()
 
         fav_ids = set()
         u = self.request.user
