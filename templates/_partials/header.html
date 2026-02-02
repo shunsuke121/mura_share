@@ -19,26 +19,7 @@
     </div>
 
     <!-- 真ん中：ナビ -->
-    <ul class="ms-nav list-unstyled d-none d-md-flex align-items-center mb-0">
-      <li>
-        <a href="{% url 'frontend:products' %}"
-           class="ms-nav-link {% if request.resolver_match.url_name == 'products' %}is-active{% endif %}">
-          <i class="bi bi-house-door"></i><span>ホーム</span>
-        </a>
-      </li>
-      <li>
-        <a href="{% url 'frontend:messages' %}"
-           class="ms-nav-link {% if request.resolver_match.url_name == 'messages' %}is-active{% endif %}">
-          <i class="bi bi-chat-dots"></i><span>メッセージ</span>
-        </a>
-      </li>
-      <li>
-        <a href="{% url 'frontend:product_new' %}"
-           class="ms-nav-link {% if request.resolver_match.url_name == 'product_new' %}is-active{% endif %}">
-          <i class="bi bi-plus-circle"></i><span>投稿</span>
-        </a>
-      </li>
-    </ul>
+    
 
     <!-- 右：通知＆アバター -->
     <div class="ms-header-right d-flex align-items-center gap-3">

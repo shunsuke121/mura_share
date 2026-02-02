@@ -20,8 +20,8 @@
   {% endif %}
 
   <div class="segmented mb-4">
-    <a class="seg-btn {% if active_tab != 'received' %}active{% endif %}" href="{% url 'frontend:returns' %}?tab=mine">私の返品</a>
-    <a class="seg-btn {% if active_tab == 'received' %}active{% endif %}" href="{% url 'frontend:returns' %}?tab=received">受け取る返品</a>
+    <a class="seg-btn {% if active_tab != 'received' %}active{% endif %}" href="{% url 'frontend:returns' %}?tab=mine">私の返品 ({{ mine|length }})</a>
+    <a class="seg-btn {% if active_tab == 'received' %}active{% endif %}" href="{% url 'frontend:returns' %}?tab=received">受け取る返品 ({{ received|length }})</a>
   </div>
 
   {% if active_tab == 'received' %}
