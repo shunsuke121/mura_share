@@ -31,9 +31,11 @@
             {% endif %}
           </div>
           <div class="text-muted small mt-1">{{ user_obj.email }}</div>
-          <div class="d-flex flex-wrap gap-2 mt-2">
-            <span class="badge bg-primary">レンタル中</span>
-          </div>
+          {% if has_active_rental %}
+            <div class="d-flex flex-wrap gap-2 mt-2">
+              <span class="badge bg-primary">レンタル中</span>
+            </div>
+          {% endif %}
         </div>
         <div class="ms-md-auto">
           {% if editing %}
@@ -493,6 +495,39 @@
                         {% else %}—{% endif %}
                       </div>
                     </div>
+                    {% if t.review %}
+                      <div class="mt-2 small text-muted">
+                        <span class="text-warning">
+                          {% for _ in "12345"|make_list %}
+                            {% if forloop.counter <= t.review.rating %}★{% else %}☆{% endif %}
+                          {% endfor %}
+                        </span>
+                        {% if t.review.comment %} - {{ t.review.comment }}{% endif %}
+                      </div>
+                    {% elif t.can_review %}
+                      <form method="post" action="{% url 'frontend:product_review_create' p.id %}" class="mt-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <div class="row g-2 align-items-center">
+                          <div class="col-auto">
+                            <select name="rating" class="form-select form-select-sm" required>
+                              <option value="">評価</option>
+                              <option value="5">★★★★★</option>
+                              <option value="4">★★★★☆</option>
+                              <option value="3">★★★☆☆</option>
+                              <option value="2">★★☆☆☆</option>
+                              <option value="1">★☆☆☆☆</option>
+                            </select>
+                          </div>
+                          <div class="col">
+                            <input type="text" name="comment" class="form-control form-control-sm" maxlength="200" placeholder="一言レビュー" required>
+                          </div>
+                          <div class="col-auto">
+                            <button type="submit" class="btn btn-sm btn-primary">送信</button>
+                          </div>
+                        </div>
+                      </form>
+                    {% endif %}
                   </div>
 
                 </div>

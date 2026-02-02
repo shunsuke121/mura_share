@@ -22,6 +22,7 @@
           <th>出品者/貸し手</th>
           <th>購入者/借り手</th>
           <th>追跡番号</th>
+          <th>返送番号</th>
           <th>状態</th>
         </tr>
       </thead>
@@ -47,10 +48,11 @@
             <div class="small text-muted">{{ s.buyer_address|default:"-" }}</div>
           </td>
           <td><code>{{ s.tracking_no|default:"未登録" }}</code></td>
+          <td><code>{{ s.return_tracking_no|default:"未登録" }}</code></td>
           <td>{{ s.get_status_display }}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="8" class="text-center text-muted py-4">まだ配送がありません。</td></tr>
+        <tr><td colspan="9" class="text-center text-muted py-4">まだ配送がありません。</td></tr>
         {% endfor %}
       </tbody>
     </table>

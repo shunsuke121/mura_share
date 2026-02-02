@@ -8,7 +8,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.db import transaction
-from django.db.models import Q, Prefetch, Exists, OuterRef, Value, BooleanField, Count, Subquery
+from django.db.models import Q, Prefetch, Exists, OuterRef, Value, BooleanField, Count, Subquery, Avg, FloatField
 from django.db.models.functions import Coalesce
 from django.http import (
     JsonResponse, HttpResponseBadRequest, HttpResponseForbidden, Http404
@@ -27,8 +27,17 @@ import re
 from accounts.models import Profile
 from .models import ContactInquiry
 from chat.models import ChatRoom, ChatMessage
+from chat.utils import is_purchase_chat_available
 from marketplace.models import (
-    Product, ProductImage, RentalApplication, Rental, Purchase, ProductFavorite, Shipment
+    Product,
+    ProductImage,
+    RentalApplication,
+    Rental,
+    Purchase,
+    ProductFavorite,
+    Shipment,
+    ProductComment,
+    Review,
 )
 
 # 通知アプリが無い環境でも落ちないように
@@ -276,6 +285,10 @@ def _handle_rental_action(request, user, redirect_name):
             rental.received_date_by_renter = now
             rental.rental_start_date = now
             rental.save(update_fields=["status", "received_date_by_renter", "rental_start_date"])
+            Shipment.objects.filter(
+                rental=rental,
+                direction=getattr(Shipment.Direction, "OUTBOUND", "outbound"),
+            ).update(status=getattr(Shipment.Status, "DELIVERED", "delivered"))
 
             _create_notification(
                 rental.product.owner,
@@ -579,6 +592,50 @@ def _purchase_completed_statuses():
         "completed",
         "完了",
     }
+
+
+
+
+def _rental_completed_statuses():
+    return {
+        getattr(Rental.Status, "COMPLETED", "COMPLETED"),
+        "COMPLETED",
+        "completed",
+    }
+
+
+def _rental_app_completed_statuses():
+    return {
+        getattr(RentalApplication.Status, "COMPLETED", "completed"),
+        "COMPLETED",
+        "completed",
+    }
+
+
+def _user_can_review_product(user, product):
+    if not user or not product:
+        return False
+    if getattr(product, "owner_id", None) == getattr(user, "id", None):
+        return False
+    if Purchase.objects.filter(
+        product_id=product.id,
+        buyer_id=user.id,
+        status__in=_purchase_completed_statuses(),
+    ).exists():
+        return True
+    if Rental.objects.filter(
+        product_id=product.id,
+        renter_id=user.id,
+        status__in=_rental_completed_statuses(),
+    ).exists():
+        return True
+    if RentalApplication.objects.filter(
+        product_id=product.id,
+        renter_id=user.id,
+        status__in=_rental_app_completed_statuses(),
+    ).exists():
+        return True
+    return False
 
 
 def _purchase_return_in_progress(purchase):
@@ -977,10 +1034,19 @@ class ProductListView(ListView):
         if av and av != "all":
             qs = qs.filter(availability_type=av)
 
+        qs = qs.annotate(
+            avg_rating=Coalesce(Avg("reviews__rating"), Value(0.0), output_field=FloatField()),
+            review_count=Count("reviews", distinct=True),
+        )
+
         if sort == "price_low":
             qs = qs.order_by("price_buy", "-id")
         elif sort == "price_high":
             qs = qs.order_by("-price_buy", "-id")
+        elif sort == "rating_high":
+            qs = qs.order_by("-avg_rating", "-review_count", "-id")
+        elif sort == "rating_low":
+            qs = qs.order_by("avg_rating", "review_count", "-id")
         else:
             qs = qs.order_by("-id")
 
@@ -1037,7 +1103,67 @@ class ProductDetailView(DetailView):
         ctx["allow_rental"] = allow_rental
         ctx["allow_purchase"] = allow_purchase
 
+        ctx["comments"] = (
+            ProductComment.objects
+            .select_related("user", "user__profile")
+            .filter(product=p)
+            .order_by("-created_at")
+        )
+        review_qs = (
+            Review.objects
+            .select_related("user", "user__profile")
+            .filter(product=p)
+            .order_by("-created_at")
+        )
+        review_stats = review_qs.aggregate(avg=Avg("rating"), count=Count("id"))
+        ctx["reviews"] = review_qs
+        ctx["review_count"] = review_stats.get("count") or 0
+        ctx["average_rating"] = review_stats.get("avg")
+
         return ctx
+
+
+@login_required
+@require_POST
+def product_comment_create(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    if getattr(product, "is_sold_out", False):
+        messages.error(request, "売り切れの商品にはコメントできません。")
+        return redirect(f"{reverse('frontend:product_detail', args=[product.id])}#comments")
+    body = (request.POST.get("body") or "").strip()
+    image = request.FILES.get("image")
+    if not body and not image:
+        messages.error(request, "コメント本文か画像を追加してください。")
+        return redirect(f"{reverse('frontend:product_detail', args=[product.id])}#comments")
+
+    ProductComment.objects.create(product=product, user=request.user, body=body or "", image=image)
+
+    if Notification is not None and product.owner_id != request.user.id:
+        sender_name = getattr(request.user, "username", "User")
+        product_title = getattr(product, "title", "") or "商品"
+        snippet = body.replace("\n", " ").strip() if body else "（画像）"
+        if len(snippet) > 120:
+            snippet = f"{snippet[:117]}..."
+        Notification.objects.create(
+            user_id=product.owner_id,
+            kind="comment",
+            body=f"{product_title} / {sender_name}: {snippet}",
+        )
+
+    messages.success(request, "コメントを投稿しました。")
+    return redirect(f"{reverse('frontend:product_detail', args=[product.id])}#comments")
+
+
+@login_required
+@require_POST
+def product_comment_delete(request, pk, comment_id):
+    product = get_object_or_404(Product, pk=pk)
+    if product.owner_id != request.user.id:
+        return HttpResponseForbidden("forbidden")
+    comment = get_object_or_404(ProductComment, id=comment_id, product=product)
+    comment.delete()
+    messages.success(request, "コメントを削除しました。")
+    return redirect(f"{reverse('frontend:product_detail', args=[product.id])}#comments")
 
 
 # ========= 単純ページ / テンプレ表示 =========
@@ -1077,19 +1203,44 @@ class MessagesPage(LoginRequiredMixin, TemplateView):
         )
         pending_purchase_status = getattr(Purchase.Status, "REQUESTED", None)
         pending_rental_status = getattr(Rental.Status, "REQUESTED", None)
+        renting_status = getattr(Rental.Status, "RENTING", None)
         pending_app_status = getattr(RentalApplication.Status, "PENDING", None)
+
         if pending_purchase_status:
             purchases = purchases.filter(
                 Q(status=pending_purchase_status) | Q(chat_rooms__isnull=False)
             ).distinct()
-        if pending_rental_status:
+        else:
+            purchases = purchases.filter(chat_rooms__isnull=False).distinct()
+
+        rental_status_values = {
+            pending_rental_status,
+            renting_status,
+            "RENTING",
+            "レンタル中",
+        }
+        rental_status_values = {v for v in rental_status_values if v}
+        if rental_status_values:
             rentals = rentals.filter(
-                Q(status=pending_rental_status) | Q(chat_rooms__isnull=False)
+                Q(status__in=rental_status_values) | Q(chat_rooms__isnull=False)
             ).distinct()
-        if pending_app_status:
+        else:
+            rentals = rentals.filter(chat_rooms__isnull=False).distinct()
+
+        app_status_values = {
+            pending_app_status,
+            "renting",
+            "received",
+            "RENTING",
+            "RECEIVED",
+        }
+        app_status_values = {v for v in app_status_values if v}
+        if app_status_values:
             applications = applications.filter(
-                Q(status=pending_app_status) | Q(chat_rooms__isnull=False)
+                Q(status__in=app_status_values) | Q(chat_rooms__isnull=False)
             ).distinct()
+        else:
+            applications = applications.filter(chat_rooms__isnull=False).distinct()
 
         purchase_ids = list(purchases.values_list("id", flat=True))
         rental_ids = list(rentals.values_list("id", flat=True))
@@ -1149,6 +1300,8 @@ class MessagesPage(LoginRequiredMixin, TemplateView):
             other = p.product.owner if p.buyer_id == user.id else p.buyer
             room = room_by_purchase.get(p.id)
             last_msg_at = getattr(room, "last_message_at", None) if room else None
+            if not is_purchase_chat_available(p, last_message_at=last_msg_at):
+                continue
             transactions.append({
                 "kind_label": "購入",
                 "created_at": p.created_at,
@@ -1192,39 +1345,6 @@ class MessagesPage(LoginRequiredMixin, TemplateView):
                 "chat_url": reverse("chat:chat_detail", args=[room.id]) if room else reverse("chat:start_rental_app_chat", args=[a.id]),
                 "last_message": getattr(room, "last_message_body", "") if room else "",
                 "unread": getattr(room, "unread_count", 0) if room else 0,
-            })
-
-        pre_rooms = (
-            ChatRoom.objects
-            .select_related("product", "user1", "user2")
-            .filter(
-                Q(user1=user) | Q(user2=user),
-                rental__isnull=True,
-                purchase__isnull=True,
-                application__isnull=True,
-            )
-            .annotate(
-                last_message_body=Subquery(last_body_qs),
-                last_message_at=Subquery(last_at_qs),
-                unread_count=Count(
-                    "messages",
-                    filter=Q(messages__is_read=False) & ~Q(messages__user=user),
-                ),
-            )
-        )
-
-        for room in pre_rooms:
-            other = room.user1 if room.user1_id != user.id else room.user2
-            transactions.append({
-                "kind_label": "相談",
-                "created_at": room.created_at,
-                "activity_at": getattr(room, "last_message_at", None) or room.created_at,
-                "product_title": getattr(room.product, "title", ""),
-                "other_name": display_name(other),
-                "status_label": "取引前",
-                "chat_url": reverse("chat:chat_detail", args=[room.id]),
-                "last_message": getattr(room, "last_message_body", "") or "",
-                "unread": getattr(room, "unread_count", 0) or 0,
             })
 
         transactions.sort(
@@ -1629,6 +1749,11 @@ def rental_app_receive(request, app_id):
         app.received_date_by_renter = timezone.now()
     app.save()
 
+    Shipment.objects.filter(
+        application=app,
+        direction=getattr(Shipment.Direction, "OUTBOUND", "outbound"),
+    ).update(status=getattr(Shipment.Status, "DELIVERED", "delivered"))
+
     try:
         _create_notification(
             app.owner,
@@ -1795,6 +1920,60 @@ def purchase_receive_done(request, purchase_id):
 
 # ========= 返品管理 =========
 
+
+
+
+@login_required
+@require_POST
+def review_create(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+    next_url = (
+        request.POST.get("next")
+        or request.META.get("HTTP_REFERER")
+        or f"{reverse('frontend:profile')}?tab=history"
+    )
+    if getattr(product, "owner_id", None) == getattr(request.user, "id", None):
+        messages.error(request, "\u81ea\u5206\u306e\u5546\u54c1\u306b\u306f\u30ec\u30d3\u30e5\u30fc\u3067\u304d\u307e\u305b\u3093\u3002")
+        return redirect(next_url)
+    if not _user_can_review_product(request.user, product):
+        messages.error(request, "\u53d6\u5f15\u5b8c\u4e86\u5f8c\u306e\u307f\u30ec\u30d3\u30e5\u30fc\u3067\u304d\u307e\u3059\u3002")
+        return redirect(next_url)
+
+    rating_raw = (request.POST.get("rating") or "").strip()
+    try:
+        rating = int(rating_raw)
+    except Exception:
+        rating = 0
+    if rating < 1 or rating > 5:
+        messages.error(request, "\u8a55\u4fa1\u306f1\u301c5\u3067\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002")
+        return redirect(next_url)
+
+    comment = (request.POST.get("comment") or "").strip()
+    if not comment:
+        messages.error(request, "\u4e00\u8a00\u30ec\u30d3\u30e5\u30fc\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002")
+        return redirect(next_url)
+    if len(comment) > 200:
+        messages.error(request, "\u30ec\u30d3\u30e5\u30fc\u306f200\u6587\u5b57\u4ee5\u5185\u3067\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002")
+        return redirect(next_url)
+
+    review_qs = Review.objects.filter(product=product, user=request.user).order_by("-created_at")
+    if review_qs.exists():
+        review = review_qs.first()
+        review.rating = rating
+        review.comment = comment
+        review.save(update_fields=["rating", "comment"])
+        messages.success(request, "\u30ec\u30d3\u30e5\u30fc\u3092\u66f4\u65b0\u3057\u307e\u3057\u305f\u3002")
+    else:
+        Review.objects.create(
+            product=product,
+            user=request.user,
+            rating=rating,
+            comment=comment,
+        )
+        messages.success(request, "\u30ec\u30d3\u30e5\u30fc\u3092\u6295\u7a3f\u3057\u307e\u3057\u305f\u3002")
+    return redirect(next_url)
+
+
 @login_required
 def returns_index(request):
     tab = request.GET.get("tab", "mine")
@@ -1829,6 +2008,8 @@ def returns_index(request):
 def return_action(request):
     if request.method != "POST":
         return redirect("frontend:returns")
+
+    next_url = request.POST.get("next") or request.META.get("HTTP_REFERER")
 
     pid = request.POST.get("purchase_id")
     action = request.POST.get("action")
@@ -1972,6 +2153,8 @@ def return_action(request):
     except Exception as e:
         messages.error(request, f"処理に失敗しました: {e}")
 
+    if next_url:
+        return redirect(next_url)
     return redirect("frontend:returns")
 
 def _create_shipment_for_application(app, direction, tracking_no="", status=None):
@@ -2153,8 +2336,12 @@ def rental_apply(request, pk):
         ed = parse_date(end_date) if end_date else None
         if not sd or not ed:
             errors.append("レンタル開始日・終了日を入力してください。")
-        elif sd > ed:
-            errors.append("レンタル終了日は開始日以降を選択してください。")
+        else:
+            today = timezone.localdate()
+            if sd < today:
+                errors.append("レンタル開始日は本日以降を選択してください。")
+            if sd > ed:
+                errors.append("レンタル終了日は開始日以降を選択してください。")
 
         if errors:
             for e in errors: messages.error(request, e)
@@ -2393,9 +2580,20 @@ def product_edit(request, pk: int):
 
                 product.save()
 
-                for img in [image_main, image_sub1, image_sub2, image_sub3]:
-                    if img:
-                        ProductImage.objects.create(product=product, image=img)
+                # Replace existing images in order (main, sub1, sub2, sub3) and keep max 4.
+                new_images = [image_main, image_sub1, image_sub2, image_sub3]
+                existing_images = list(product.images.order_by("id"))
+                for idx, img in enumerate(new_images):
+                    if idx < len(existing_images):
+                        if img:
+                            existing_images[idx].image = img
+                            existing_images[idx].save(update_fields=["image"])
+                    else:
+                        if img:
+                            ProductImage.objects.create(product=product, image=img)
+                if len(existing_images) > 4:
+                    for extra in existing_images[4:]:
+                        extra.delete()
 
                 messages.success(request, "保存しました。")
                 return redirect("frontend:profile")
@@ -2461,6 +2659,17 @@ def profile(request):
     favorites = []
     renting_products = []
     transactions = []
+    has_active_rental = (
+        Rental.objects
+        .filter(status=Rental.Status.RENTING.value, renter=user)
+        .exists()
+        or
+        RentalApplication.objects
+        .filter(order_type=RentalApplication.OrderType.RENTAL)
+        .filter(status__iexact="renting")
+        .filter(renter=user)
+        .exists()
+    )
     if active_tab == "posts":
         my_products = Product.objects.filter(owner=user).order_by("-id")
     elif active_tab == "favorites":
@@ -2543,6 +2752,7 @@ def profile(request):
                     "kind": "rental",
                     "completed_at": r.completed_date or r.returned_date or r.created_at,
                     "product": r.product,
+                    "reviewable": r.renter_id == user.id,
                 })
         for app in rental_apps:
             if app.product:
@@ -2550,6 +2760,7 @@ def profile(request):
                     "kind": "rental",
                     "completed_at": getattr(app, "completed_date", None) or app.created_at,
                     "product": app.product,
+                    "reviewable": app.renter_id == user.id,
                 })
         for p in purchases:
             if p.product:
@@ -2557,9 +2768,29 @@ def profile(request):
                     "kind": "purchase",
                     "completed_at": p.completed_date or p.shipped_at or p.created_at,
                     "product": p.product,
+                    "reviewable": p.buyer_id == user.id,
                 })
 
         items.sort(key=lambda x: x["completed_at"] or timezone.now(), reverse=True)
+        product_ids = [item["product"].id for item in items if item.get("product")]
+        review_by_product = {}
+        if product_ids:
+            review_qs = (
+                Review.objects
+                .filter(user=user, product_id__in=product_ids)
+                .order_by("-created_at")
+            )
+            for rv in review_qs:
+                if rv.product_id not in review_by_product:
+                    review_by_product[rv.product_id] = rv
+        for item in items:
+            product = item.get("product")
+            if not product:
+                item["review"] = None
+                item["can_review"] = False
+                continue
+            item["review"] = review_by_product.get(product.id)
+            item["can_review"] = bool(item.get("reviewable")) and item["review"] is None
         transactions = items
 
     ctx = {
@@ -2571,6 +2802,7 @@ def profile(request):
         "favorites": favorites,
         "renting_products": renting_products,
         "transactions": transactions,
+        "has_active_rental": has_active_rental,
     }
     return render(request, "frontend/profile/index.html", ctx)
 
@@ -2818,6 +3050,14 @@ class AdminShippingView(AdminRequiredMixin, TemplateView):
             s.seller_address = seller["address"]
             s.buyer_name = buyer["name"]
             s.buyer_address = buyer["address"]
+            if s.rental_id and s.rental:
+                s.return_tracking_no = getattr(s.rental, "tracking_number_return", "") or ""
+            elif s.purchase_id and s.purchase:
+                s.return_tracking_no = getattr(s.purchase, "return_tracking_number", "") or ""
+            elif s.application_id and s.application:
+                s.return_tracking_no = getattr(s.application, "return_tracking_number", "") or ""
+            else:
+                s.return_tracking_no = ""
 
         ctx["shipments"] = shipments
         return ctx
