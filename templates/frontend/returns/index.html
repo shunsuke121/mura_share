@@ -1,11 +1,12 @@
 {% extends "base.html" %}
-{% block title %}返品管理 - MURAシェア{% endblock %}
+{% block title %}返品・返却 - MURA SHARE{% endblock %}
 {% block content %}
-<div class="container-xxl py-4 purchases returns">
-  <div class="d-flex align-items-center justify-content-between mb-3">
+<div class="returns">
+  <div class="ms-section-title">
     <div>
-      <h2 class="fw-bold mb-1">返品管理</h2>
-      <div class="text-muted">ロールに応じて操作</div>
+      <div class="ms-kicker">Returns</div>
+      <h2>返品・返却</h2>
+      <div class="ms-muted">返品や返却のステータスを確認できます。</div>
     </div>
   </div>
 
@@ -20,8 +21,8 @@
   {% endif %}
 
   <div class="segmented mb-4">
-    <a class="seg-btn {% if active_tab != 'received' %}active{% endif %}" href="{% url 'frontend:returns' %}?tab=mine">私の返品 ({{ mine|length }})</a>
-    <a class="seg-btn {% if active_tab == 'received' %}active{% endif %}" href="{% url 'frontend:returns' %}?tab=received">受け取る返品 ({{ received|length }})</a>
+    <a class="seg-btn {% if active_tab != 'received' %}active{% endif %}" href="{% url 'frontend:returns' %}?tab=mine">自分の返品 ({{ mine|length }})</a>
+    <a class="seg-btn {% if active_tab == 'received' %}active{% endif %}" href="{% url 'frontend:returns' %}?tab=received">受け取った返品 ({{ received|length }})</a>
   </div>
 
   {% if active_tab == 'received' %}

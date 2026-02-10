@@ -1,120 +1,159 @@
 {% extends "base.html" %}
-{% load static %}
-{% block title %}商品一覧 - MURAシェア{% endblock %}
+{% block title %}マーケット - MURA SHARE{% endblock %}
 
 {% block content %}
-<style>
-.product-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px,1fr)); gap:14px; }
-.product-card{ border:0; border-radius:14px; box-shadow:0 2px 10px rgba(15,23,42,.06); overflow:hidden; background:#fff; }
-.product-card .thumb{ width:100%; aspect-ratio:1/1; background:#f8fafc; overflow:hidden; }
-.product-card .thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
-.pc-body{ padding:.6rem .6rem .75rem; }
-.pc-title{ font-weight:700; font-size:.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.pc-cat{ color:#6b7280; font-size:.8rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.pc-desc{ color:#6b7280; font-size:.8rem; margin-top:.2rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-.pc-price{ font-weight:700; font-size:.9rem; }
-.pc-price-sub{ color:#6b7280; font-size:.8rem; }
-.pc-meta{ color:#6b7280; font-size:.78rem; }
-.pc-icons{ display:flex; gap:.9rem; color:#6b7280; font-size:1rem; }
-.pc-icons .bi{ vertical-align:middle; }
-.fav-btn{ cursor:pointer; }
-.fav-btn:focus{ outline:none; }
-</style>
-
-
-<form id="filters" method="get" class="row g-2 align-items-center">
-  <div class="col-auto" style="min-width:220px;">
-    <input
-      type="search"
-      name="q"
-      class="form-control form-control-sm"
-      placeholder="商品名・説明で検索"
-      value="{{ selected.q }}"
-      oninput="debounceSubmit(this.form)"
-      inputmode="search"
-      autocomplete="off">
-  </div>
-
-  <div class="col-auto">
-    <select name="category" class="form-select form-select-sm" onchange="this.form.requestSubmit()">
-      <option value="all" {% if selected.category == 'all' %}selected{% endif %}>すべてのカテゴリー</option>
-      <option {% if selected.category == '電子機器' %}selected{% endif %}>電子機器</option>
-      <option {% if selected.category == '家具' %}selected{% endif %}>家具</option>
-      <option {% if selected.category == 'スポーツ用品' %}selected{% endif %}>スポーツ用品</option>
-      <option {% if selected.category == '楽器' %}selected{% endif %}>楽器</option>
-      <option {% if selected.category == '車両' %}selected{% endif %}>車両</option>
-      <option {% if selected.category == 'アウトドア用品' %}selected{% endif %}>アウトドア用品</option>
-      <option {% if selected.category == 'ファッション' %}selected{% endif %}>ファッション</option>
-      <option {% if selected.category == '書籍・メディア' %}selected{% endif %}>書籍・メディア</option>
-      <option {% if selected.category == 'その他' %}selected{% endif %}>その他</option>
-    </select>
-  </div>
-
-  <div class="col-auto">
-    <select name="availability" class="form-select form-select-sm" onchange="this.form.requestSubmit()">
-      <option value="all" {% if selected.availability == 'all' %}selected{% endif %}>すべて</option>
-      <option {% if selected.availability == 'レンタルのみ' %}selected{% endif %}>レンタルのみ</option>
-      <option {% if selected.availability == '販売のみ' %}selected{% endif %}>販売のみ</option>
-      <option {% if selected.availability == 'レンタル・販売両方' %}selected{% endif %}>レンタル・販売両方</option>
-    </select>
-  </div>
-
-  <div class="col-auto ms-auto">
-    <select name="sort" class="form-select form-select-sm" onchange="this.form.requestSubmit()">
-      <option value="newest"     {% if selected.sort == 'newest' %}selected{% endif %}>新着順</option>
-      <option value="price_low"  {% if selected.sort == 'price_low' %}selected{% endif %}>価格が安い順</option>
-      <option value="price_high" {% if selected.sort == 'price_high' %}selected{% endif %}>価格が高い順</option>
-      <option value="rating_high" {% if selected.sort == 'rating_high' %}selected{% endif %}>評価が高い順</option>
-      <option value="rating_low"  {% if selected.sort == 'rating_low' %}selected{% endif %}>評価が低い順</option>
-    </select>
-  </div>
-</form>
-
-<div class="container-xxl py-3">
-  {% if products %}
-    <div class="product-grid">
-  {% for p in products %}
-    <div class="product-card">
-      <a href="{% url 'frontend:product_detail' p.id %}">
-        <div class="thumb">
-          {% if p.image_url %}
-            <img src="{{ p.image_url }}" alt="{{ p.title }}">
-          {% else %}
-            <div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted fs-1">📦</div>
-          {% endif %}
-        </div>
-      </a>
-
-      <div class="pc-body">
-        <div class="d-flex justify-content-between mb-1">
-          <div class="pc-icons">
-            <button type="button" class="fav-btn btn p-0 border-0 bg-transparent"
-                    data-pid="{{ p.id }}"
-                    aria-pressed="{% if p.is_favorited %}true{% else %}false{% endif %}">
-              <i data-icon="heart" class="bi {% if p.is_favorited %}bi-heart-fill text-danger{% else %}bi-heart{% endif %}"></i>
-            </button>
-            <a href="{% url 'frontend:product_detail' p.id %}#comments" class="pc-chat" aria-label="コメントを見る">
-              <i class="bi bi-chat"></i>
-            </a>
-          </div>
-          {% if p.is_sold_out %}
-            <div class="pc-meta text-danger fw-semibold">sold out</div>
-          {% elif p.available_quantity or p.stock_quantity %}
-            <div class="pc-meta">在庫 {{ p.available_quantity|default:0 }}{% if p.stock_quantity %}/{{ p.stock_quantity }}{% endif %}</div>
-          {% endif %}
-        </div>
-        <div class="pc-title mt-1">{{ p.title }}</div>
-        {% if p.price_per_day %}<div class="pc-price">¥{{ p.price_per_day|floatformat:0 }}/日</div>{% endif %}
-        {% if p.price_buy %}<div class="pc-price-sub">販売 ¥{{ p.price_buy|floatformat:0 }}</div>{% endif %}
-        
-        {% if p.category %}<div class="pc-cat">{{ p.category }}</div>{% endif %}
-        {% if p.description %}<div class="pc-desc">{{ p.description|striptags }}</div>{% endif %}
+<section class="ms-hero">
+  <div>
+    <div class="ms-eyebrow">MURA SHARE</div>
+    <h1>日常を、もっと特別に。<br>借りる・買う・預けるの新体験。</h1>
+    <p>ラグジュアリーと遊び心を、あなたの街で。信頼できる相手と、安心して価値あるものを循環させるためのマーケットです。</p>
+    <div class="ms-hero-actions">
+      <a class="btn btn-primary" href="{% url 'frontend:products' %}">今すぐ探す</a>
+      <a class="btn btn-ghost" href="{% url 'frontend:product_new' %}">出品する</a>
+    </div>
+    <div class="ms-hero-stats">
+      <div class="ms-stat">
+        <strong>4.9★</strong>
+        <span class="ms-muted">平均評価</span>
+      </div>
+      <div class="ms-stat">
+        <strong>24h</strong>
+        <span class="ms-muted">承認スピード</span>
+      </div>
+      <div class="ms-stat">
+        <strong>100%</strong>
+        <span class="ms-muted">安全取引</span>
       </div>
     </div>
-  {% endfor %}
-</div>
+  </div>
+  <div class="ms-hero-card">
+    <div class="ms-kicker">Trending</div>
+    <h3 class="mb-2">今週の注目カテゴリ</h3>
+    <div class="pc-tags">
+      {% for c in categories %}
+        <a class="ms-chip" href="?category={{ c }}">{{ c }}</a>
+      {% endfor %}
+    </div>
+    <div class="ms-divider"></div>
+    <div class="ms-muted small">
+      安心の本人確認・レビュー・配送サポート付き。はじめての方でもスムーズに。
+    </div>
+  </div>
+</section>
+
+<form id="filters" method="get" class="ms-filter-bar" aria-label="Filter products">
+  <label class="visually-hidden" for="filter_q">検索</label>
+  <div class="ms-search">
+    <i class="bi bi-search"></i>
+    <input id="filter_q" type="search" name="q" placeholder="キーワードで探す" value="{{ selected.q }}" autocomplete="off">
+  </div>
+
+  <select name="category" class="form-select" onchange="this.form.requestSubmit()">
+    <option value="all" {% if selected.category == 'all' %}selected{% endif %}>すべてのカテゴリ</option>
+    {% for c in categories %}
+      <option value="{{ c }}" {% if selected.category == c %}selected{% endif %}>{{ c }}</option>
+    {% endfor %}
+  </select>
+
+  <select name="availability" class="form-select" onchange="this.form.requestSubmit()">
+    <option value="all" {% if selected.availability == 'all' %}selected{% endif %}>すべて</option>
+    <option value="レンタルのみ" {% if selected.availability == 'レンタルのみ' %}selected{% endif %}>レンタルのみ</option>
+    <option value="販売のみ" {% if selected.availability == '販売のみ' %}selected{% endif %}>販売のみ</option>
+    <option value="レンタル・販売両方" {% if selected.availability == 'レンタル・販売両方' %}selected{% endif %}>レンタル・販売両方</option>
+  </select>
+
+  <select name="sort" class="form-select" onchange="this.form.requestSubmit()">
+    <option value="newest" {% if selected.sort == 'newest' %}selected{% endif %}>新着順</option>
+    <option value="price_low" {% if selected.sort == 'price_low' %}selected{% endif %}>価格が安い順</option>
+    <option value="price_high" {% if selected.sort == 'price_high' %}selected{% endif %}>価格が高い順</option>
+    <option value="rating_high" {% if selected.sort == 'rating_high' %}selected{% endif %}>評価が高い順</option>
+    <option value="rating_low" {% if selected.sort == 'rating_low' %}selected{% endif %}>評価が低い順</option>
+  </select>
+</form>
+
+<div class="ms-section">
+  <div class="ms-section-title">
+    <h2>ピックアップ</h2>
+    {% if is_paginated %}
+      <span class="ms-muted small">{{ page_obj.start_index }}-{{ page_obj.end_index }} / {{ paginator.count }}</span>
+    {% endif %}
+  </div>
+
+  {% if products %}
+    <div class="product-grid">
+      {% for p in products %}
+        <article class="product-card">
+          <a href="{% url 'frontend:product_detail' p.id %}">
+            <div class="thumb">
+              {% if p.image_url %}
+                <img src="{{ p.image_url }}" alt="{{ p.title }}">
+              {% else %}
+                <div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted fs-1">??</div>
+              {% endif %}
+            </div>
+          </a>
+
+          <div class="pc-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="pc-meta">{{ p.category }}</div>
+              {% if p.review_count %}
+                <div class="pc-meta"><i class="bi bi-star-fill text-warning me-1"></i>{{ p.avg_rating|floatformat:1 }} ({{ p.review_count }})</div>
+              {% endif %}
+            </div>
+
+            <div class="pc-title mt-2">
+              {% if p.title|length > 20 %}
+                {{ p.title|slice:":20" }}...
+              {% else %}
+                {{ p.title }}
+              {% endif %}
+            </div>
+
+            {% if p.price_per_day %}
+              <div class="pc-price">\{{ p.price_per_day|floatformat:0 }}/日</div>
+            {% elif p.price_buy %}
+              <div class="pc-price">\{{ p.price_buy|floatformat:0 }}</div>
+            {% else %}
+              <div class="pc-meta">価格未設定</div>
+            {% endif %}
+
+            {% if p.description %}
+              <div class="pc-desc">{{ p.description|striptags }}</div>
+            {% endif %}
+
+            <div class="pc-tags">
+              {% if p.is_sold_out %}
+                <span class="ms-chip is-hot">SOLD OUT</span>
+              {% else %}
+                <span class="ms-chip is-available">在庫あり</span>
+              {% endif %}
+              {% if p.availability_type %}
+                <span class="ms-chip">{{ p.availability_type }}</span>
+              {% endif %}
+              {% if p.available_quantity or p.stock_quantity %}
+                <span class="ms-chip">在庫 {{ p.available_quantity|default:0 }}{% if p.stock_quantity %}/{{ p.stock_quantity }}{% endif %}</span>
+              {% endif %}
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-3">
+              <div class="pc-icons">
+                <button type="button" class="fav-btn btn p-0 border-0 bg-transparent"
+                        data-pid="{{ p.id }}"
+                        aria-pressed="{% if p.is_favorited %}true{% else %}false{% endif %}">
+                  <i data-icon="heart" class="bi {% if p.is_favorited %}bi-heart-fill text-danger{% else %}bi-heart{% endif %}"></i>
+                </button>
+                <a href="{% url 'frontend:product_detail' p.id %}#comments" class="pc-chat" aria-label="コメント">
+                  <i class="bi bi-chat"></i>
+                </a>
+              </div>
+              <a class="btn btn-sm btn-ghost" href="{% url 'frontend:product_detail' p.id %}">詳細</a>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
   {% else %}
-    <div class="text-center py-5">商品が見つかりませんでした</div>
+    <div class="ms-empty">該当する商品が見つかりませんでした。</div>
   {% endif %}
 </div>
 
@@ -152,20 +191,28 @@
 
 <script>
 (function(){
-  // CSRF
   function getCookie(name){
     const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
     return m ? m.pop() : '';
   }
   const csrftoken = getCookie('csrftoken');
 
-  // いいねトグル
+  let timer;
+  const searchInput = document.getElementById('filter_q');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        searchInput.form?.requestSubmit();
+      }, 450);
+    });
+  }
+
   document.addEventListener('click', async (e) => {
     const btn = e.target.closest('.fav-btn');
     if (!btn) return;
-
-    // aタグに吸われないよう止める
-    e.preventDefault(); e.stopPropagation();
+    e.preventDefault();
+    e.stopPropagation();
 
     const pid = btn.getAttribute('data-pid');
     if (!pid) return;
@@ -200,17 +247,11 @@
         btn.setAttribute('aria-pressed','false');
         icon.classList.remove('bi-heart-fill','text-danger');
         icon.classList.add('bi-heart');
-
-        // プロフィールお気に入り一覧に居る場合だけカード削除
-        const card = btn.closest('.product-card');   // ← .card ではなく .product-card
-        const favSection = document.querySelector('[data-favorites-list]');
-        if (card && favSection) card.remove();
       }
     } catch(err){
       console.error(err);
     }
   });
-
 })();
 </script>
 {% endblock %}

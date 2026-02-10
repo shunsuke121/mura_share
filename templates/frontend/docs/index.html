@@ -1,5 +1,84 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
+{% block title %}操作マニュアル - MURA SHARE{% endblock %}
+
 {% block content %}
-<h2 class="h4 mb-3">設計書ビュー</h2>
-<p class="text-muted">提出用の画面。ユースケース図・シーケンス図・テーブル設計の要点をタブで載せます。</p>
+<div class="ms-section">
+  <div class="ms-section-title">
+    <div>
+      <div class="ms-kicker">Guide</div>
+      <h2>操作マニュアル</h2>
+      <div class="ms-muted">MURA SHAREの基本操作をまとめました。</div>
+    </div>
+  </div>
+
+  <div class="ms-panel">
+    <h5>1. マーケットで探す</h5>
+    <ol class="ms-muted">
+      <li>上部検索バー or フィルターでキーワード・カテゴリを選択。</li>
+      <li>カードをクリックして詳細へ。</li>
+      <li>「詳細」ボタンでレビュー・コメントも確認できます。</li>
+    </ol>
+
+    <div class="ms-divider"></div>
+
+    <h5>2. 商品をレンタル/購入する</h5>
+    <ol class="ms-muted">
+      <li>商品詳細で「レンタル / 購入」を選択。</li>
+      <li>数量・日程（レンタル）・住所・支払い方法を入力。</li>
+      <li>「申し込む」で申請完了。進行状況は管理画面で確認。</li>
+    </ol>
+
+    <div class="ms-divider"></div>
+
+    <h5>3. メッセージで相談する</h5>
+    <ol class="ms-muted">
+      <li>サイドバーの「メッセージ」から取引相手の一覧へ。</li>
+      <li>会話を開き、詳細な相談や確認事項を送信。</li>
+      <li>未読はバッジで表示されます。</li>
+    </ol>
+
+    <div class="ms-divider"></div>
+
+    <h5>4. 出品する</h5>
+    <ol class="ms-muted">
+      <li>「出品する」から写真・タイトル・説明・カテゴリを入力。</li>
+      <li>提供方法（レンタル/購入）と価格を設定。</li>
+      <li>公開後、管理画面からステータスを確認。</li>
+    </ol>
+
+    <div class="ms-divider"></div>
+
+    <h5>5. 取引管理</h5>
+    <ul class="ms-muted">
+      <li><strong>レンタル管理</strong>: 承認/発送/返却ステータスを確認。</li>
+      <li><strong>購入管理</strong>: 承認/発送/受取完了の操作。</li>
+      <li><strong>返品・返却</strong>: 返送状況を確認。</li>
+    </ul>
+
+    <div class="ms-divider"></div>
+
+    <h5>6. お気に入り・プロフィール</h5>
+    <ul class="ms-muted">
+      <li>ハートでお気に入り登録。</li>
+      <li>プロフィールで住所・電話番号・表示名を更新。</li>
+      <li>履歴からレビュー投稿も可能。</li>
+    </ul>
+
+    <div class="ms-divider"></div>
+
+    <h5>7. 通知</h5>
+    <ul class="ms-muted">
+      <li>上部のベルアイコンから最新通知を確認。</li>
+      <li>重要なお知らせは未読バッジで表示。</li>
+    </ul>
+
+    <div class="ms-divider"></div>
+
+    <h5>8. トラブル時</h5>
+    <ul class="ms-muted">
+      <li>配送トラブル: 取引メッセージで相手と確認。</li>
+      <li>その他: 「お問い合わせ」からサポートへ連絡。</li>
+    </ul>
+  </div>
+</div>
 {% endblock %}
