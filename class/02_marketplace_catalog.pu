@@ -1,0 +1,53 @@
+@startuml
+hide circle
+skinparam classAttributeIconSize 0
+left to right direction
+skinparam linetype ortho
+skinparam nodesep 35
+skinparam ranksep 45
+
+class "ユーザー" as User
+
+class "商品" as Product {
+  商品名
+  説明
+  カテゴリ
+  提供方法
+  日額
+  購入価格
+  在庫数
+  利用可能数
+  状態
+  作成日時
+}
+
+class "商品画像" as ProductImage {
+  画像
+}
+
+class "お気に入り" as ProductFavorite {
+  作成日時
+}
+
+class "商品コメント" as ProductComment {
+  本文
+  画像
+  作成日時
+}
+
+class "レビュー" as Review {
+  評価
+  コメント
+  作成日時
+}
+
+User "1" -- "0..*" Product : 出品者
+Product "1" -- "0..*" ProductImage
+User "1" -- "0..*" ProductFavorite : ユーザー
+Product "1" -- "0..*" ProductFavorite : 商品
+User "1" -- "0..*" ProductComment : 投稿者
+Product "1" -- "0..*" ProductComment
+User "1" -- "0..*" Review : レビュアー
+Product "1" -- "0..*" Review
+
+@enduml

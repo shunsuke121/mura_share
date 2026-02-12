@@ -1,0 +1,29 @@
+@startuml
+hide circle
+skinparam classAttributeIconSize 0
+left to right direction
+skinparam linetype ortho
+skinparam nodesep 35
+skinparam ranksep 45
+
+class "ユーザー" as User
+
+class "プロフィール" as Profile {
+  表示名
+  電話番号
+  住所
+  プロフィール画像
+  管理者フラグ
+}
+
+class "通知" as Notification {
+  種別
+  本文
+  既読日時
+  作成日時
+}
+
+User "1" -- "0..1" Profile : プロフィール
+User "1" -- "0..*" Notification : 通知
+
+@enduml

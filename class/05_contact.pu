@@ -1,0 +1,25 @@
+@startuml
+hide circle
+skinparam classAttributeIconSize 0
+left to right direction
+skinparam linetype ortho
+skinparam nodesep 35
+skinparam ranksep 45
+
+class "ユーザー" as User
+
+class "お問い合わせ" as ContactInquiry {
+  氏名
+  会社
+  メール
+  電話
+  種別
+  件名
+  内容
+  状態
+  作成日時
+}
+
+ContactInquiry "0..*" --> "0..1" User : 送信者
+
+@enduml

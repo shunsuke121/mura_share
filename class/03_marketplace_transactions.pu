@@ -1,0 +1,73 @@
+@startuml
+hide circle
+skinparam classAttributeIconSize 0
+left to right direction
+skinparam linetype ortho
+skinparam nodesep 35
+skinparam ranksep 45
+
+class "ユーザー" as User
+
+class "商品" as Product {
+  商品名
+  提供方法
+  状態
+  作成日時
+}
+
+class "レンタル" as Rental {
+  数量
+  合計金額
+  日数
+  開始日
+  終了日
+  状態
+  支払方法
+  作成日時
+}
+
+class "購入" as Purchase {
+  数量
+  購入金額
+  状態
+  レンタルから購入
+  支払方法
+  作成日時
+}
+
+class "レンタル申請" as RentalApplication {
+  申請種別
+  数量
+  開始日
+  終了日
+  支払方法
+  状態
+  出品者非表示
+  申請者非表示
+  作成日時
+}
+
+class "配送" as Shipment {
+  種別
+  方向
+  状態
+  追跡番号
+  作成日時
+  更新日時
+}
+
+User "1" -- "0..*" Product : 出品者
+Product "1" -- "0..*" Rental
+User "1" -- "0..*" Rental : 借り手
+Product "1" -- "0..*" Purchase
+User "1" -- "0..*" Purchase : 購入者
+Product "1" -- "0..*" RentalApplication
+User "1" -- "0..*" RentalApplication : 出品者
+User "1" -- "0..*" RentalApplication : 申請者
+
+Product "1" -- "0..*" Shipment
+Rental "0..1" -- "0..*" Shipment
+Purchase "0..1" -- "0..*" Shipment
+RentalApplication "0..1" -- "0..*" Shipment
+
+@enduml
