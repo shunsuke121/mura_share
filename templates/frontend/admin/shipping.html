@@ -1,61 +1,87 @@
 {% extends "base.html" %}
-{% block title %}配送管理{% endblock %}
+{% block title %}配送管理 - MURA SHARE{% endblock %}
 {% block content %}
-<div class="container py-4">
-  <h5 class="mb-3">配送管理</h5>
-
-  <form method="get" class="mb-3">
-    <div class="input-group" style="max-width:480px;">
-      <input type="text" class="form-control" name="q" value="{{ request.GET.q }}" placeholder="商品名・追跡番号・氏名で検索">
-      <button class="btn btn-outline-secondary" type="submit">検索</button>
+<div class="ms-section">
+  <div class="ms-section-title">
+    <div>
+      <div class="ms-kicker">Admin</div>
+      <h2>配送管理</h2>
+      <div class="ms-muted">配送ステータスを一括で確認・更新できます。</div>
     </div>
-  </form>
+  </div>
 
-  <div class="table-responsive">
-    <table class="table table-sm align-middle">
-      <thead>
-        <tr>
-          <th>作成</th>
-          <th>区分</th>
-          <th>方向</th>
-          <th>商品</th>
-          <th>出品者/貸し手</th>
-          <th>購入者/借り手</th>
-          <th>追跡番号</th>
-          <th>返送番号</th>
-          <th>状態</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for s in shipments %}
-        <tr>
-          <td class="text-muted">{{ s.created_at|date:"Y-m-d H:i" }}</td>
-          <td><span class="badge bg-dark">{{ s.get_kind_display }}</span></td>
-          <td><span class="badge bg-secondary">{{ s.get_direction_display }}</span></td>
-          <td>
-            {% if s.product %}
-              <a href="{% url 'frontend:product_detail' s.product.id %}">#{{ s.product.id }} {{ s.product.title }}</a>
-            {% else %}-{% endif %}
-          </td>
-          <td>
-            <div class="small text-muted">{{ s.seller_label|default:"-" }}</div>
-            <div>{{ s.seller_name|default:"-" }}</div>
-            <div class="small text-muted">{{ s.seller_address|default:"-" }}</div>
-          </td>
-          <td>
-            <div class="small text-muted">{{ s.buyer_label|default:"-" }}</div>
-            <div>{{ s.buyer_name|default:"-" }}</div>
-            <div class="small text-muted">{{ s.buyer_address|default:"-" }}</div>
-          </td>
-          <td><code>{{ s.tracking_no|default:"未登録" }}</code></td>
-          <td><code>{{ s.return_tracking_no|default:"未登録" }}</code></td>
-          <td>{{ s.get_status_display }}</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="9" class="text-center text-muted py-4">まだ配送がありません。</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="ms-panel mb-3">
+    <form method="get">
+      <div class="input-group" style="max-width:480px;">
+        <input type="text" class="form-control" name="q" value="{{ request.GET.q }}" placeholder="商品名・追跡番号・氏名で検索">
+        <button class="btn btn-outline-secondary" type="submit">検索</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="ms-panel">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>作成</th>
+            <th>種別</th>
+            <th>方向</th>
+            <th>商品</th>
+            <th>出品者 / 受取人</th>
+            <th>購入者 / 借主</th>
+            <th>追跡番号</th>
+            <th>返送追跡</th>
+            <th>状態</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in shipments %}
+          <tr>
+            <td class="text-muted">{{ s.created_at|date:"Y-m-d H:i" }}</td>
+            <td><span class="badge bg-dark">{{ s.get_kind_display }}</span></td>
+            <td><span class="badge bg-secondary">{{ s.get_direction_display }}</span></td>
+            <td>
+              {% if s.product %}
+                <a href="{% url 'frontend:product_detail' s.product.id %}">#{{ s.product.id }} {{ s.product.title }}</a>
+              {% else %}-{% endif %}
+            </td>
+            <td>
+              <div class="small">{{ s.seller_label }}</div>
+              <div>{{ s.seller_name }}</div>
+              <div class="text-muted small">{{ s.seller_address }}</div>
+            </td>
+            <td>
+              <div class="small">{{ s.buyer_label }}</div>
+              <div>{{ s.buyer_name }}</div>
+              <div class="text-muted small">{{ s.buyer_address }}</div>
+            </td>
+            <td>
+              <div>{{ s.tracking_no|default:"-" }}</div>
+            </td>
+            <td>
+              <div>{{ s.return_tracking_no|default:"-" }}</div>
+            </td>
+            <td>
+              <form method="post" action="{% url 'frontend:admin_shipping' %}">
+                {% csrf_token %}
+                <input type="hidden" name="shipment_id" value="{{ s.id }}">
+                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                  {% for st, label in s.Status.choices %}
+                    <option value="{{ st }}" {% if s.status == st %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="text-muted">該当する配送はありません。</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 {% endblock %}

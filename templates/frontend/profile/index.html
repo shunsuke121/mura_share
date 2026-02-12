@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}プロフィール - MURAシェア{% endblock %}
+{% block title %}プロフィール - MURA SHARE{% endblock %}
 
 {% block content %}
-<div class="container-xxl py-4 profile-page">
+<div class="profile-page">
 
   {% if messages %}
     <div class="mb-3">
@@ -12,45 +12,40 @@
     </div>
   {% endif %}
 
-  {# ヘッダー部分（共通） #}
-  <div class="card shadow-sm mb-4 border-0 profile-header-card">
-    <div class="card-body">
-      <div class="d-flex flex-column flex-md-row align-items-md-center gap-3">
-        <div class="position-relative">
-          <img
-            src="{% if profile.profile_image %}{{ profile.profile_image.url }}{% else %}/static/img/default_user.png{% endif %}"
-            class="rounded-circle" width="96" height="96" alt="プロフィール画像">
-        </div>
-        <div class="flex-grow-1">
-          <div class="d-flex align-items-center gap-2 flex-wrap">
-            <h4 class="mb-0">{{ profile.display_name|default:user_obj.username }}</h4>
-            {% if request.user.is_staff or profile.is_admin %}
-              <span class="badge bg-dark rounded-pill">管理者</span>
-            {% else %}
-              <span class="badge bg-secondary-subtle text-secondary rounded-pill">一般ユーザー</span>
-            {% endif %}
-          </div>
-          <div class="text-muted small mt-1">{{ user_obj.email }}</div>
-          {% if has_active_rental %}
-            <div class="d-flex flex-wrap gap-2 mt-2">
-              <span class="badge bg-primary">レンタル中</span>
-            </div>
-          {% endif %}
-        </div>
-        <div class="ms-md-auto">
-          {% if editing %}
-            <a href="{% url 'frontend:profile' %}" class="btn btn-outline-secondary">キャンセル</a>
+  <div class="ms-panel mb-4">
+    <div class="d-flex flex-column flex-md-row align-items-md-center gap-3">
+      <div class="position-relative">
+        <img
+          src="{% if profile.profile_image %}{{ profile.profile_image.url }}{% else %}/static/img/default_user.png{% endif %}"
+          class="rounded-circle" width="96" height="96" alt="プロフィール画像">
+      </div>
+      <div class="flex-grow-1">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <h4 class="mb-0">{{ profile.display_name|default:user_obj.username }}</h4>
+          {% if request.user.is_staff or profile.is_admin %}
+            <span class="badge bg-dark rounded-pill">管理者</span>
           {% else %}
-            <a href="{% url 'frontend:profile' %}?edit=1" class="btn btn-outline-dark">
-              <i class="bi bi-pencil-square"></i> 編集
-            </a>
+            <span class="badge bg-secondary-subtle text-secondary rounded-pill">ユーザー</span>
           {% endif %}
         </div>
+        {% if has_active_rental %}
+          <div class="d-flex flex-wrap gap-2 mt-2">
+            <span class="badge bg-primary">レンタル中</span>
+          </div>
+        {% endif %}
+      </div>
+      <div class="ms-md-auto">
+        {% if editing %}
+          <a href="{% url 'frontend:profile' %}" class="btn btn-outline-secondary">キャンセル</a>
+        {% else %}
+          <a href="{% url 'frontend:profile' %}?edit=1" class="btn btn-outline-dark">
+            <i class="bi bi-pencil-square"></i> 編集
+          </a>
+        {% endif %}
       </div>
     </div>
   </div>
 
-  {# タブ：ここをリンク + active_tab 判定にする #}
   <ul class="nav nav-tabs mb-4 flex-wrap">
     <li class="nav-item">
       <a class="nav-link {% if active_tab == 'info' %}active{% endif %}"
@@ -61,7 +56,7 @@
     <li class="nav-item">
       <a class="nav-link {% if active_tab == 'posts' %}active{% endif %}"
          href="{% url 'frontend:profile' %}?tab=posts">
-        私の投稿
+        出品
       </a>
     </li>
     <li class="nav-item">
@@ -79,194 +74,157 @@
     <li class="nav-item">
       <a class="nav-link {% if active_tab == 'history' %}active{% endif %}"
          href="{% url 'frontend:profile' %}?tab=history">
-        取引履歴
+        履歴
       </a>
     </li>
   </ul>
 
-  {# ================== タブごとの中身 ================== #}
-
-  {# 基本情報タブ #}
   {% if active_tab == "info" %}
-    <div class="card border-0 shadow-sm">
-      <div class="card-body">
-        <h5 class="mb-3">基本情報</h5>
+    <div class="ms-panel">
+      <h5 class="mb-3">基本情報</h5>
 
-        {% if editing %}
-          <form method="post" enctype="multipart/form-data">
-            {% csrf_token %}
+      {% if editing %}
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
 
-            <div class="row g-3">
-              <div class="col-12">
-                <label class="form-label text-muted">プロフィール画像</label>
-                <input type="file" name="profile_image" class="form-control">
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label text-muted">
-                  <i class="bi bi-person me-2"></i>表示名
-                </label>
-                <input
-                  type="text"
-                  name="display_name"
-                  class="form-control"
-                  value="{{ profile.display_name|default:user_obj.username }}"
-                  placeholder="山田 太郎"
-                >
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label text-muted">
-                  <i class="bi bi-telephone me-2"></i>電話番号
-                </label>
-                <input
-                  type="text"
-                  name="phone"
-                  class="form-control"
-                  value="{{ profile.phone }}"
-                  placeholder="090-1234-5678"
-                >
-              </div>
-
-              <div class="col-12">
-                <label class="form-label text-muted">
-                  <i class="bi bi-geo-alt me-2"></i>住所
-                </label>
-                <input
-                  type="text"
-                  name="address"
-                  class="form-control"
-                  value="{{ profile.address }}"
-                  placeholder="東京都渋谷区..."
-                >
-              </div>
-
-              <div class="col-12 d-flex gap-2">
-                <button type="submit" class="btn btn-primary">
-                  保存
-                </button>
-                <a href="{% url 'frontend:profile' %}" class="btn btn-outline-secondary">
-                  キャンセル
-                </a>
-              </div>
-            </div>
-          </form>
-
-        {% else %}
           <div class="row g-3">
-            <div class="col-md-6">
-              <div class="p-3 bg-light border rounded-3 h-100">
-                <div class="text-muted small mb-1">
-                  <i class="bi bi-person me-2"></i>表示名
-                </div>
-                <div class="fw-semibold">{{ profile.display_name|default:user_obj.username }}</div>
-              </div>
+            <div class="col-12">
+              <label class="form-label text-muted">プロフィール画像</label>
+              <input type="file" name="profile_image" class="form-control">
             </div>
 
             <div class="col-md-6">
-              <div class="p-3 bg-light border rounded-3 h-100">
-                <div class="text-muted small mb-1">
-                  <i class="bi bi-envelope me-2"></i>メールアドレス
-                </div>
-                <div class="fw-semibold">{{ user_obj.email }}</div>
-              </div>
+              <label class="form-label text-muted"><i class="bi bi-person me-2"></i>表示名</label>
+              <input
+                type="text"
+                name="display_name"
+                class="form-control"
+                value="{{ profile.display_name|default:user_obj.username }}"
+                placeholder="山田 太郎"
+              >
             </div>
 
             <div class="col-md-6">
-              <div class="p-3 bg-light border rounded-3 h-100">
-                <div class="text-muted small mb-1">
-                  <i class="bi bi-telephone me-2"></i>電話番号
-                </div>
-                <div class="fw-semibold">{{ profile.phone|default:"未登録" }}</div>
-              </div>
+              <label class="form-label text-muted"><i class="bi bi-telephone me-2"></i>電話番号</label>
+              <input
+                type="text"
+                name="phone"
+                class="form-control"
+                value="{{ profile.phone }}"
+                placeholder="090-1234-5678"
+              >
             </div>
 
             <div class="col-12">
-              <div class="p-3 bg-light border rounded-3">
-                <div class="text-muted small mb-1">
-                  <i class="bi bi-geo-alt me-2"></i>住所
-                </div>
-                <div class="fw-semibold">{{ profile.address|default:"未登録" }}</div>
-              </div>
+              <label class="form-label text-muted"><i class="bi bi-geo-alt me-2"></i>住所</label>
+              <input
+                type="text"
+                name="address"
+                class="form-control"
+                value="{{ profile.address }}"
+                placeholder="東京都渋谷区..."
+              >
+            </div>
+
+            <div class="col-12 d-flex gap-2">
+              <button type="submit" class="btn btn-primary">保存</button>
+              <a href="{% url 'frontend:profile' %}" class="btn btn-outline-secondary">キャンセル</a>
             </div>
           </div>
-        {% endif %}
-      </div>
+        </form>
+
+      {% else %}
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="p-3 bg-light border rounded-3 h-100">
+              <div class="text-muted small mb-1"><i class="bi bi-person me-2"></i>表示名</div>
+              <div class="fw-semibold">{{ profile.display_name|default:user_obj.username }}</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="p-3 bg-light border rounded-3 h-100">
+              <div class="text-muted small mb-1"><i class="bi bi-telephone me-2"></i>電話番号</div>
+              <div class="fw-semibold">{{ profile.phone|default:"未登録" }}</div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="p-3 bg-light border rounded-3">
+              <div class="text-muted small mb-1"><i class="bi bi-geo-alt me-2"></i>住所</div>
+              <div class="fw-semibold">{{ profile.address|default:"未登録" }}</div>
+            </div>
+          </div>
+        </div>
+      {% endif %}
     </div>
   {% endif %}
 
-  <!-- 私の投稿: 横長カード + 表示/編集/削除 -->
   {% if active_tab == "posts" %}
-    <div class="card border-0 shadow-sm">
-      <div class="card-body">
-        <h5 class="mb-3">私の投稿 ({{ my_products|length }})</h5>
+    <div class="ms-panel">
+      <h5 class="mb-3">出品 ({{ my_products|length }})</h5>
 
-        {% if my_products %}
-          {% for p in my_products %}
-            <div class="card mypost-card mb-3" id="prod-{{ p.id }}">
-              <div class="card-body">
-                <div class="d-flex align-items-start gap-3">
-                  {% with first=p.images.all|first %}
-                      <div class="flex-shrink-0" style="width:140px;height:90px;overflow:hidden;border-radius:.5rem;">
-                        {% if first and first.image %}
-                          <img src="{{ first.image.url }}" class="w-100 h-100" style="object-fit:cover;" alt="">
-                        {% else %}
-                          <div class="bg-light w-100 h-100 d-flex align-items-center justify-content-center text-muted">No Image</div>
-                        {% endif %}
-                      </div>
-                    {% endwith %}
+      {% if my_products %}
+        {% for p in my_products %}
+          <div class="card mypost-card mb-3" id="prod-{{ p.id }}">
+            <div class="card-body">
+              <div class="d-flex align-items-start gap-3">
+                {% with first=p.images.all|first %}
+                  <div class="flex-shrink-0" style="width:140px;height:90px;overflow:hidden;border-radius:.5rem;">
+                    {% if first and first.image %}
+                      <img src="{{ first.image.url }}" class="w-100 h-100" style="object-fit:cover;" alt="">
+                    {% else %}
+                      <div class="bg-light w-100 h-100 d-flex align-items-center justify-content-center text-muted">No Image</div>
+                    {% endif %}
+                  </div>
+                {% endwith %}
 
+                <div class="flex-grow-1">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <h5 class="mb-1">{{ p.title }}</h5>
+                    <div class="badge-wrap">
+                      {% if p.status == p.Status.LISTED %}<span class="badge text-bg-success">公開中</span>
+                      {% elif p.status == p.Status.RENTED %}<span class="badge text-bg-warning">レンタル中</span>
+                      {% elif p.status == p.Status.SOLD %}<span class="badge text-bg-secondary">販売済み</span>
+                      {% else %}<span class="badge text-bg-light text-muted">-</span>{% endif %}
+                    </div>
+                  </div>
 
-                  <div class="flex-grow-1">
-                    <div class="d-flex justify-content-between align-items-start">
-                      <h5 class="mb-1">{{ p.title }}</h5>
-                      <div class="badge-wrap">
-                        {% if p.status == p.Status.LISTED %}<span class="badge text-bg-success">利用可能</span>
-                        {% elif p.status == p.Status.RENTED %}<span class="badge text-bg-warning">貸出中</span>
-                        {% elif p.status == p.Status.SOLD %}<span class="badge text-bg-secondary">販売済</span>
-                        {% else %}<span class="badge text-bg-light text-muted">-</span>{% endif %}
-                      </div>
+                  <p class="text-muted small mb-2">{{ p.description|default:""|truncatechars:120 }}</p>
+
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div class="fw-bold">
+                      {% firstof p.price_per_day p.price_buy 0 as disp_price %}
+                      {% if p.price_per_day %}
+                        \{{ p.price_per_day|default:p.price_buy|default:0 }} / 日
+                      {% else %}
+                        \{{ disp_price }}
+                      {% endif %}
                     </div>
 
-                    <p class="text-muted small mb-2">{{ p.description|default:""|truncatechars:120 }}</p>
-
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div class="fw-bold">
-                        {% firstof p.price_per_day p.price_buy 0 as disp_price %}
-                        {% if p.price_per_day %}
-                          ¥{{ p.price_per_day|default:p.price_buy|default:0 }} / 日
-                        {% else %}
-                          ¥{{ disp_price }}
-                        {% endif %}
-                      </div>
-
-                      <div class="btn-group">
-                        <a class="btn btn-outline-secondary btn-sm" href="{% url 'frontend:product_detail' p.id %}">
-                          <i class="bi bi-eye"></i> 表示
-                        </a>
-                        <a class="btn btn-outline-primary btn-sm" href="{% url 'frontend:product_edit' p.id %}">
-                          <i class="bi bi-pencil"></i> 編集
-                        </a>
-                        <button type="button" class="btn btn-outline-danger btn-sm js-del"
-                                data-id="{{ p.id }}" data-url="{% url 'frontend:product_delete_api' p.id %}">
-                          <i class="bi bi-trash"></i> 削除
-                        </button>
-                      </div>
+                    <div class="btn-group">
+                      <a class="btn btn-outline-secondary btn-sm" href="{% url 'frontend:product_detail' p.id %}">
+                        <i class="bi bi-eye"></i> 詳細
+                      </a>
+                      <a class="btn btn-outline-primary btn-sm" href="{% url 'frontend:product_edit' p.id %}">
+                        <i class="bi bi-pencil"></i> 編集
+                      </a>
+                      <button type="button" class="btn btn-outline-danger btn-sm js-del"
+                              data-id="{{ p.id }}" data-url="{% url 'frontend:product_delete_api' p.id %}">
+                        <i class="bi bi-trash"></i> 削除
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          {% endfor %}
-        {% else %}
-          <p class="text-muted mb-2">投稿がありません。</p>
-          <a href="{% url 'frontend:product_new' %}" class="btn btn-sm btn-primary">商品を投稿する</a>
-        {% endif %}
-      </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted mb-2">出品がまだありません。</p>
+        <a href="{% url 'frontend:product_new' %}" class="btn btn-sm btn-primary">出品する</a>
+      {% endif %}
     </div>
 
     <script>
-      // CSRF
       function getCookie(name){
         const m = document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');
         return m ? m.pop() : '';
@@ -276,7 +234,7 @@
       document.addEventListener('click', async (e) => {
         const btn = e.target.closest('.js-del');
         if (!btn) return;
-        if (!confirm('この投稿を削除しますか？')) return;
+        if (!confirm('この出品を削除しますか？')) return;
 
         const url = btn.dataset.url;
         const id  = btn.dataset.id;
@@ -285,181 +243,95 @@
           const res = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' } });
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const json = await res.json();
-          if (json.ok) { card?.remove(); } else { alert('削除に失敗しました。'); }
+          if (json.ok) { card?.remove(); } else { alert('削除に失敗しました'); }
         } catch (err) {
-          alert('通信エラー。しばらくして再試行してください。');
+          alert('通信エラーが発生しました。');
         }
       });
     </script>
   {% endif %}
 
-  {# お気に入り #}
   {% if active_tab == "favorites" %}
-  <div class="card border-0 shadow-sm" data-favorites-list>
-    <div class="card-body">
-      <h5 class="mb-3">お気に入り ({{ favorites|length }})</h5>
+  <div class="ms-panel" data-favorites-list>
+    <h5 class="mb-3">お気に入り ({{ favorites|length }})</h5>
 
-      {% if favorites %}
-        <div class="vstack gap-3">
-          {% for f in favorites %}
-            {% with p=f.product %}
-            {% if p %}
-            <div class="card mypost-card mb-3" id="fav-{{ p.id }}">
-              <div class="card-body">
-                <div class="d-flex align-items-start gap-3">
+    {% if favorites %}
+      <div class="vstack gap-3">
+        {% for f in favorites %}
+          {% with p=f.product %}
+          {% if p %}
+          <div class="card mypost-card mb-3" id="fav-{{ p.id }}">
+            <div class="card-body">
+              <div class="d-flex align-items-start gap-3">
 
-                  <!-- 左: サムネ 140x90（私の投稿と同じ） -->
-                  <a href="{% url 'frontend:product_detail' p.pk %}"
-                    class="flex-shrink-0"
-                    style="width:140px;height:90px;overflow:hidden;border-radius:.5rem;">
-                    {% with first=p.images.all|first %}
-                      {% if first and first.image %}
-                        <img src="{{ first.image.url }}" class="w-100 h-100" style="object-fit:cover;" alt="">
-                      {% else %}
-                        <div class="bg-light w-100 h-100 d-flex align-items-center justify-content-center text-muted">No Image</div>
-                      {% endif %}
-                    {% endwith %}
-                  </a>
+                <a href="{% url 'frontend:product_detail' p.pk %}"
+                  class="flex-shrink-0"
+                  style="width:140px;height:90px;overflow:hidden;border-radius:.5rem;">
+                  {% with first=p.images.all|first %}
+                    {% if first and first.image %}
+                      <img src="{{ first.image.url }}" class="w-100 h-100" style="object-fit:cover;" alt="">
+                    {% else %}
+                      <div class="bg-light w-100 h-100 d-flex align-items-center justify-content-center text-muted">No Image</div>
+                    {% endif %}
+                  {% endwith %}
+                </a>
 
-                  <!-- 右: 本文（私の投稿と同構成） -->
-                  <div class="flex-grow-1">
-                    <div class="d-flex justify-content-between align-items-start">
-                      <h5 class="mb-1">
-                        <a class="text-decoration-none text-dark" href="{% url 'frontend:product_detail' p.pk %}">
-                          {{ p.title }}
-                        </a>
-                      </h5>
-                      <button type="button"
-                              class="fav-btn p-0 border-0 bg-transparent"
-                              data-pid="{{ p.id }}" aria-pressed="true" title="お気に入り解除">
-                        <i class="bi bi-heart-fill text-danger" data-icon="heart"></i>
-                      </button>
-                    </div>
-
-                    <p class="text-muted small mb-2">{{ p.description|default:""|truncatechars:120 }}</p>
-
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div class="fw-bold">
-                        {% if p.price_per_day %}
-                          ¥{{ p.price_per_day|floatformat:0 }} / 日
-                        {% elif p.price_buy %}
-                          ¥{{ p.price_buy|floatformat:0 }}
-                        {% else %}—{% endif %}
-                      </div>
-                    </div>
+                <div class="flex-grow-1">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <h5 class="mb-1">
+                      <a class="text-decoration-none text-dark" href="{% url 'frontend:product_detail' p.pk %}">
+                        {{ p.title }}
+                      </a>
+                    </h5>
+                    <button type="button"
+                            class="fav-btn p-0 border-0 bg-transparent"
+                            data-pid="{{ p.id }}" aria-pressed="true" title="お気に入り解除">
+                      <i class="bi bi-heart-fill text-danger" data-icon="heart"></i>
+                    </button>
                   </div>
 
+                  <p class="text-muted small mb-2">{{ p.description|default:""|truncatechars:120 }}</p>
+
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div class="fw-bold">
+                      {% if p.price_per_day %}
+                        \{{ p.price_per_day|floatformat:0 }} / 日
+                      {% elif p.price_buy %}
+                        \{{ p.price_buy|floatformat:0 }}
+                      {% else %}?{% endif %}
+                    </div>
+                  </div>
                 </div>
+
               </div>
             </div>
-            {% endif %}
-            {% endwith %}
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="text-center text-muted py-4">
-          <i class="bi bi-heart fs-1 d-block mb-2"></i>
-          <p class="mb-0">お気に入りがありません。</p>
-        </div>
-      {% endif %}
-    </div>
+          </div>
+          {% endif %}
+          {% endwith %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="ms-empty">
+        <i class="bi bi-heart fs-1 d-block mb-2"></i>
+        <p class="mb-0">お気に入りはまだありません。</p>
+      </div>
+    {% endif %}
   </div>
   {% endif %}
 
-  {# レンタル中 #}
   {% if active_tab == "rentals" %}
-  <div class="card border-0 shadow-sm">
-    <div class="card-body">
-      <h5 class="mb-3">レンタル中</h5>
-      {% if renting_products %}
-        <div class="vstack gap-3">
-          {% for item in renting_products %}
-            {% with p=item.product %}
-              {% if p %}
-              <div class="card mypost-card mb-0">
-                <div class="card-body">
-                  <div class="d-flex align-items-start gap-3">
-                    <a href="{% url 'frontend:product_detail' p.pk %}"
-                       class="flex-shrink-0"
-                       style="width:140px;height:90px;overflow:hidden;border-radius:.5rem;">
-                      {% with first=p.images.all|first %}
-                        {% if first and first.image %}
-                          <img src="{{ first.image.url }}" class="w-100 h-100" style="object-fit:cover;" alt="">
-                        {% else %}
-                          <div class="bg-light w-100 h-100 d-flex align-items-center justify-content-center text-muted">No Image</div>
-                        {% endif %}
-                      {% endwith %}
-                    </a>
-
-                    <div class="flex-grow-1">
-                      <div class="d-flex justify-content-between align-items-start">
-                        <h5 class="mb-1">
-                          <a class="text-decoration-none text-dark" href="{% url 'frontend:product_detail' p.pk %}">
-                            {{ p.title }}
-                          </a>
-                        </h5>
-                        <span class="badge bg-primary">レンタル中</span>
-                      </div>
-
-                      <div class="text-muted small">
-                        {% if item.start_date and item.end_date %}
-                          期間: {{ item.start_date|date:"Y年n月j日" }} 〜 {{ item.end_date|date:"Y年n月j日" }}
-                        {% elif item.start_date %}
-                          開始: {{ item.start_date|date:"Y年n月j日" }}
-                        {% endif %}
-                        <span class="ms-2">数量: {{ item.quantity|default:1 }}</span>
-                      </div>
-                      {% if p %}
-                        {% if p.availability_type == "レンタル・販売両方" or p.availability_type == "販売のみ" %}
-                          <div class="mt-2 d-flex gap-2">
-                            {% if item.application_id %}
-                              <form method="get" action="{% url 'frontend:rental_app_purchase' item.application_id %}" class="m-0">
-                                <button class="btn btn-outline-primary btn-sm">購入する</button>
-                              </form>
-                            {% elif item.rental_id %}
-                              <form method="get" action="{% url 'frontend:rental_purchase' item.rental_id %}" class="m-0">
-                                <button class="btn btn-outline-primary btn-sm">購入する</button>
-                              </form>
-                            {% endif %}
-                          </div>
-                        {% endif %}
-                      {% endif %}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {% endif %}
-            {% endwith %}
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="text-center text-muted py-4">
-          <i class="bi bi-box fs-1 d-block mb-2"></i>
-          <p class="mb-0">現在レンタル中の商品はありません。</p>
-        </div>
-      {% endif %}
-    </div>
-  </div>
-  {% endif %}
-
- {# 取引履歴 #}
-{% if active_tab == "history" %}
-  <div class="card border-0 shadow-sm">
-    <div class="card-body">
-      <h5 class="mb-3">取引履歴{% if transactions %} ({{ transactions|length }}){% endif %}</h5>
-
-      {% if transactions %}
-        <div class="vstack gap-3 profile-history">
-          {% for t in transactions %}
-            {% with p=t.product %}
+  <div class="ms-panel">
+    <h5 class="mb-3">レンタル中</h5>
+    {% if renting_products %}
+      <div class="vstack gap-3">
+        {% for item in renting_products %}
+          {% with p=item.product %}
             {% if p %}
-            <div class="card mypost-card mb-3">
+            <div class="card mypost-card mb-0">
               <div class="card-body">
                 <div class="d-flex align-items-start gap-3">
-
-                  <!-- 左側サムネ（私の投稿と同じ 140x90）＋ バッジ重ね -->
                   <a href="{% url 'frontend:product_detail' p.pk %}"
-                     class="flex-shrink-0 position-relative"
+                     class="flex-shrink-0"
                      style="width:140px;height:90px;overflow:hidden;border-radius:.5rem;">
                     {% with first=p.images.all|first %}
                       {% if first and first.image %}
@@ -468,12 +340,8 @@
                         <div class="bg-light w-100 h-100 d-flex align-items-center justify-content-center text-muted">No Image</div>
                       {% endif %}
                     {% endwith %}
-                    <span class="trade-badge {% if t.kind == 'rental' %}trade-badge--rental{% else %}trade-badge--purchase{% endif %}">
-                      {% if t.kind == 'rental' %}レンタル{% else %}購入{% endif %}
-                    </span>
                   </a>
 
-                  <!-- 右側本文（私の投稿と同じ構成） -->
                   <div class="flex-grow-1">
                     <div class="d-flex justify-content-between align-items-start">
                       <h5 class="mb-1">
@@ -481,72 +349,148 @@
                           {{ p.title }}
                         </a>
                       </h5>
-                      <span class="text-muted small">{{ t.completed_at|date:"Y/m/d" }}</span>
+                      <span class="badge bg-primary">レンタル中</span>
                     </div>
 
-                    <p class="text-muted small mb-2">{{ p.description|default:""|truncatechars:120 }}</p>
-
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div class="fw-bold">
-                        {% if p.price_per_day %}
-                          ¥{{ p.price_per_day|default:0 }} / 日
-                        {% elif p.price_buy %}
-                          ¥{{ p.price_buy|default:0 }}
-                        {% else %}—{% endif %}
-                      </div>
+                    <div class="text-muted small">
+                      {% if item.start_date and item.end_date %}
+                        期間: {{ item.start_date|date:"Y年n月j日" }} ? {{ item.end_date|date:"Y年n月j日" }}
+                      {% elif item.start_date %}
+                        開始: {{ item.start_date|date:"Y年n月j日" }}
+                      {% endif %}
+                      <span class="ms-2">数量 {{ item.quantity|default:1 }}</span>
                     </div>
-                    {% if t.review %}
-                      <div class="mt-2 small text-muted">
-                        <span class="text-warning">
-                          {% for _ in "12345"|make_list %}
-                            {% if forloop.counter <= t.review.rating %}★{% else %}☆{% endif %}
-                          {% endfor %}
-                        </span>
-                        {% if t.review.comment %} - {{ t.review.comment }}{% endif %}
-                      </div>
-                    {% elif t.can_review %}
-                      <form method="post" action="{% url 'frontend:product_review_create' p.id %}" class="mt-2">
-                        {% csrf_token %}
-                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                        <div class="row g-2 align-items-center">
-                          <div class="col-auto">
-                            <select name="rating" class="form-select form-select-sm" required>
-                              <option value="">評価</option>
-                              <option value="5">★★★★★</option>
-                              <option value="4">★★★★☆</option>
-                              <option value="3">★★★☆☆</option>
-                              <option value="2">★★☆☆☆</option>
-                              <option value="1">★☆☆☆☆</option>
-                            </select>
-                          </div>
-                          <div class="col">
-                            <input type="text" name="comment" class="form-control form-control-sm" maxlength="200" placeholder="一言レビュー" required>
-                          </div>
-                          <div class="col-auto">
-                            <button type="submit" class="btn btn-sm btn-primary">送信</button>
-                          </div>
+                    {% if p %}
+                      {% if p.availability_type == "レンタル・販売両方" or p.availability_type == "販売のみ" %}
+                        <div class="mt-2 d-flex gap-2">
+                          {% if item.application_id %}
+                            <form method="get" action="{% url 'frontend:rental_app_purchase' item.application_id %}" class="m-0">
+                              <button class="btn btn-outline-primary btn-sm">購入する</button>
+                            </form>
+                          {% elif item.rental_id %}
+                            <form method="get" action="{% url 'frontend:rental_purchase' item.rental_id %}" class="m-0">
+                              <button class="btn btn-outline-primary btn-sm">購入する</button>
+                            </form>
+                          {% endif %}
                         </div>
-                      </form>
+                      {% endif %}
                     {% endif %}
                   </div>
-
                 </div>
               </div>
             </div>
             {% endif %}
-            {% endwith %}
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="text-center text-muted py-4">
-          <i class="bi bi-clock-history fs-1 d-block mb-2"></i>
-          <p class="mb-0">まだ取引履歴がありません。</p>
-        </div>
-      {% endif %}
-    </div>
+          {% endwith %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="ms-empty">
+        <i class="bi bi-box fs-1 d-block mb-2"></i>
+        <p class="mb-0">レンタル中の商品はありません。</p>
+      </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+ {% if active_tab == "history" %}
+  <div class="ms-panel">
+    <h5 class="mb-3">履歴{% if transactions %} ({{ transactions|length }}){% endif %}</h5>
+
+    {% if transactions %}
+      <div class="vstack gap-3 profile-history">
+        {% for t in transactions %}
+          {% with p=t.product %}
+          {% if p %}
+          <div class="card mypost-card mb-3">
+            <div class="card-body">
+              <div class="d-flex align-items-start gap-3">
+
+                <a href="{% url 'frontend:product_detail' p.pk %}"
+                   class="flex-shrink-0 position-relative"
+                   style="width:140px;height:90px;overflow:hidden;border-radius:.5rem;">
+                  {% with first=p.images.all|first %}
+                    {% if first and first.image %}
+                      <img src="{{ first.image.url }}" class="w-100 h-100" style="object-fit:cover;" alt="">
+                    {% else %}
+                      <div class="bg-light w-100 h-100 d-flex align-items-center justify-content-center text-muted">No Image</div>
+                    {% endif %}
+                  {% endwith %}
+                  <span class="trade-badge {% if t.kind == 'rental' %}trade-badge--rental{% else %}trade-badge--purchase{% endif %}">
+                    {% if t.kind == 'rental' %}レンタル{% else %}購入{% endif %}
+                  </span>
+                </a>
+
+                <div class="flex-grow-1">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <h5 class="mb-1">
+                      <a class="text-decoration-none text-dark" href="{% url 'frontend:product_detail' p.pk %}">
+                        {{ p.title }}
+                      </a>
+                    </h5>
+                    <span class="text-muted small">{{ t.completed_at|date:"Y/m/d" }}</span>
+                  </div>
+
+                  <p class="text-muted small mb-2">{{ p.description|default:""|truncatechars:120 }}</p>
+
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div class="fw-bold">
+                      {% if p.price_per_day %}
+                        \{{ p.price_per_day|default:0 }} / 日
+                      {% elif p.price_buy %}
+                        \{{ p.price_buy|default:0 }}
+                      {% else %}?{% endif %}
+                    </div>
+                  </div>
+                  {% if t.review %}
+                    <div class="mt-2 small text-muted">
+                      <span class="text-warning">
+                        {% for _ in "12345"|make_list %}
+                          {% if forloop.counter <= t.review.rating %}★{% else %}☆{% endif %}
+                        {% endfor %}
+                      </span>
+                      {% if t.review.comment %} - {{ t.review.comment }}{% endif %}
+                    </div>
+                  {% elif t.can_review %}
+                    <form method="post" action="{% url 'frontend:product_review_create' p.id %}" class="mt-2">
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                      <div class="row g-2 align-items-center">
+                        <div class="col-auto">
+                          <select name="rating" class="form-select form-select-sm" required>
+                            <option value="">評価</option>
+                            <option value="5">★★★★★</option>
+                            <option value="4">★★★★☆</option>
+                            <option value="3">★★★☆☆</option>
+                            <option value="2">★★☆☆☆</option>
+                            <option value="1">★☆☆☆☆</option>
+                          </select>
+                        </div>
+                        <div class="col">
+                          <input type="text" name="comment" class="form-control form-control-sm" maxlength="200" placeholder="ひとことレビュー" required>
+                        </div>
+                        <div class="col-auto">
+                          <button type="submit" class="btn btn-sm btn-primary">送信</button>
+                        </div>
+                      </div>
+                    </form>
+                  {% endif %}
+                </div>
+
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          {% endwith %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="ms-empty">
+        <i class="bi bi-clock-history fs-1 d-block mb-2"></i>
+        <p class="mb-0">履歴はまだありません。</p>
+      </div>
+    {% endif %}
   </div>
 {% endif %}
-
 
 </div>
 

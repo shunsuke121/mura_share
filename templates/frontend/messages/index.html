@@ -1,48 +1,52 @@
 {% extends "base.html" %}
-{% block title %}メッセージ - MURAシェア{% endblock %}
+{% block title %}メッセージ - MURA SHARE{% endblock %}
 
 {% block content %}
-<div class="container-xxl py-4">
-  <div class="d-flex align-items-center justify-content-between mb-3">
+<div class="ms-section">
+  <div class="ms-section-title">
     <div>
-      <h2 class="fw-bold mb-1">メッセージ</h2>
-      <div class="text-muted">取引ごとのチャット一覧</div>
+      <div class="ms-kicker">Messages</div>
+      <h2>メッセージ</h2>
+      <div class="ms-muted">取引相手との会話を一覧で確認できます。</div>
     </div>
   </div>
 
-  {% if transactions %}
-    <div class="chat-list">
-      {% for t in transactions %}
-        <a href="{{ t.chat_url }}" class="chat-row {% if t.unread %}is-unread{% endif %}">
-          <div class="chat-row-main">
-            <div class="chat-title">{{ t.product_title }}</div>
-            <div class="chat-meta">
-              <span class="badge chat-kind">{{ t.kind_label }}</span>
-              <span>{{ t.other_name|default:"-" }}</span>
-              <span class="badge chat-status">{{ t.status_label }}</span>
+  <div class="ms-panel">
+    {% if transactions %}
+      <div class="chat-list">
+        {% for t in transactions %}
+          <a href="{{ t.chat_url }}" class="chat-row {% if t.unread %}is-unread{% endif %}">
+            <div class="chat-avatar" aria-hidden="true">
+              {{ t.other_name|default:"-"|first|upper }}
             </div>
-            <div class="chat-last">
-              {% if t.last_message %}
-                {{ t.last_message }}
-              {% else %}
-                <span class="text-muted">まだメッセージはありません。</span>
+            <div class="chat-row-main">
+              <div class="chat-title">{{ t.product_title }}</div>
+              <div class="chat-meta">
+                <span class="badge chat-kind">{{ t.kind_label }}</span>
+                <span class="chat-person">{{ t.other_name|default:"-" }}</span>
+                <span class="badge chat-status">{{ t.status_label }}</span>
+              </div>
+              <div class="chat-last">
+                {% if t.last_message %}
+                  {{ t.last_message }}
+                {% else %}
+                  <span class="text-muted">まだメッセージがありません。</span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="chat-row-side">
+              <div class="chat-time">{{ t.activity_at|date:"n/j H:i" }}</div>
+              {% if t.unread %}
+                <span class="badge bg-danger rounded-pill">{{ t.unread }}</span>
               {% endif %}
+              <i class="bi bi-chevron-right"></i>
             </div>
-          </div>
-          <div class="chat-row-side">
-            <div class="chat-time">{{ t.activity_at|date:"n/j H:i" }}</div>
-            {% if t.unread %}
-              <span class="badge bg-danger rounded-pill">{{ t.unread }}</span>
-            {% endif %}
-            <i class="bi bi-chevron-right"></i>
-          </div>
-        </a>
-      {% endfor %}
-    </div>
-  {% else %}
-    <div class="text-center py-5 text-muted">
-      まだ取引チャットがありません。
-    </div>
-  {% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="ms-empty">メッセージはまだありません。</div>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

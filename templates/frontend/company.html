@@ -1,51 +1,46 @@
 {% extends "base.html" %}
-{% block title %}会社概要 - MURAシェア{% endblock %}
+{% block title %}会社情報 - MURA SHARE{% endblock %}
 
 {% block content %}
-<style>
-.company-page {
-  font-family: "Noto Sans JP", "Noto Sans", sans-serif;
-}
-</style>
-
-<div class="container-xxl py-4 company-page">
-  <div class="mb-3">
-    <h2 class="fw-bold mb-1">会社概要</h2>
-    <div class="text-muted"><span class="font-roman">MURA</span>シェア株式会社の基本情報です。</div>
+<div class="ms-section">
+  <div class="ms-section-title">
+    <div>
+      <div class="ms-kicker">Company</div>
+      <h2>会社情報</h2>
+    </div>
   </div>
 
-  <div class="card border-0 shadow-sm">
-    <div class="card-body p-4 p-md-5">
-      <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
-          <tbody>
-            <tr>
-              <th class="text-muted" style="width:140px;">会社名</th>
-              <td><span class="font-roman">MURA</span>シェア株式会社</td>
-            </tr>
-            <tr>
-              <th class="text-muted">設立</th>
-              <td>2026年1月22日</td>
-            </tr>
-            <tr>
-              <th class="text-muted">所在地</th>
-              <td>福岡県北九州市小倉北区砂津</td>
-            </tr>
-            <tr>
-              <th class="text-muted">資本金</th>
-              <td>100万円</td>
-            </tr>
-            <tr>
-              <th class="text-muted">代表者</th>
-              <td>田村俊丞</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+  <div class="ms-panel">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <tbody>
+          <tr>
+            <th class="text-muted" style="width:160px;">会社名</th>
+            <td>MURAシェア株式会社</td>
+          </tr>
+          <tr>
+            <th class="text-muted">設立</th>
+            <td>2026年1月2日</td>
+          </tr>
+          <tr>
+            <th class="text-muted">所在地</th>
+            <td>東京都渋谷区桜丘町</td>
+          </tr>
+          <tr>
+            <th class="text-muted">資本金</th>
+            <td>1,000万円</td>
+          </tr>
+          <tr>
+            <th class="text-muted">事業内容</th>
+            <td>シェアリングプラットフォームの企画・運営</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-      <div class="mt-4 text-muted small">
-        会社概要の内容は予告なく更新される場合があります。
-      </div>
+    <div class="ms-divider"></div>
+    <div class="ms-muted small">
+      MURA SHAREは、価値あるモノを必要な人へ届けることで持続可能な体験を提供しています。
     </div>
   </div>
 </div>

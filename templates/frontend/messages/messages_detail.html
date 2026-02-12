@@ -1,14 +1,13 @@
 {% extends "base.html" %}
-{% block title %}チャット{% endblock %}
+{% block title %}チャット - MURA SHARE{% endblock %}
 
 {% block content %}
-<div class="container-xxl py-4">
-  <div class="card mb-3 shadow-sm">
-    <div class="card-body d-flex flex-column flex-md-row gap-3 align-items-md-center">
+<div class="ms-section">
+  <div class="ms-panel mb-3">
+    <div class="d-flex flex-column flex-md-row gap-3 align-items-md-center">
       <div class="flex-grow-1">
         <div class="fw-semibold">{{ room.product.title }}</div>
         <div class="small text-muted">相手: {{ counterparty_name }}</div>
-        {# 取引状態/追跡番号などは表示しない #}
       </div>
       <div class="ms-md-auto">
         <a href="{% url 'frontend:product_detail' room.product.id %}" class="btn btn-outline-secondary btn-sm">商品を見る</a>
@@ -16,30 +15,28 @@
     </div>
   </div>
 
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <div class="messages-box mb-3" style="height: 420px; overflow-y: auto;">
-        {% for msg in messages %}
-          <div class="mb-2 {% if msg.user.id == request.user.id %}text-end{% endif %}">
-            <div class="p-2 d-inline-block border rounded">
-              <strong>{{ msg.user.username }}</strong><br>
-              {{ msg.body }}
-              <div class="text-muted" style="font-size: 12px;">
-                {{ msg.created_at|date:"n/j H:i" }}
-              </div>
+  <div class="ms-panel">
+    <div class="messages-box mb-3">
+      {% for msg in messages %}
+        <div class="mb-2 {% if msg.user.id == request.user.id %}text-end{% endif %}">
+          <div class="p-2 d-inline-block border rounded">
+            <strong>{{ msg.user.username }}</strong><br>
+            {{ msg.body }}
+            <div class="text-muted" style="font-size: 12px;">
+              {{ msg.created_at|date:"n/j H:i" }}
             </div>
           </div>
-        {% endfor %}
-      </div>
-
-      <form method="POST" action="{% url 'chat:send_message' room.id %}">
-        {% csrf_token %}
-        <div class="input-group">
-          <input type="text" name="body" class="form-control" placeholder="メッセージを入力..." required>
-          <button class="btn btn-primary">送信</button>
         </div>
-      </form>
+      {% endfor %}
     </div>
+
+    <form method="POST" action="{% url 'chat:send_message' room.id %}">
+      {% csrf_token %}
+      <div class="input-group">
+        <input type="text" name="body" class="form-control" placeholder="メッセージを入力" required>
+        <button class="btn btn-primary">送信</button>
+      </div>
+    </form>
   </div>
 </div>
 {% endblock %}

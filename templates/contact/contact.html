@@ -1,92 +1,92 @@
 {% extends "base.html" %}
-{%block title %} お問い合わせ - MURAシェア{% endblock%}
+{% block title %}お問い合わせ - MURA SHARE{% endblock %}
 
 {% block content %}
-<div class="container-xxl py-4">
-  <div class="mb-3">
-    <h2 class="fw-bold mb-1">お問い合わせ</h2>
-    <div class="text-muted">質問・要望・不具合報告はこちらからお送りください。担当より72時間以内にご連絡します（営業日）。</div>
+<div class="ms-section">
+  <div class="ms-section-title">
+    <div>
+      <div class="ms-kicker">Support</div>
+      <h2>お問い合わせ</h2>
+      <p class="ms-muted mb-0">ご相談・ご質問・法人のご利用など、2営業日以内にご返信します。</p>
+    </div>
   </div>
 
-  <div class="card border-0 shadow-sm">
-    <div class="card-body p-4 p-md-5">
-      <div id="alert" class="alert d-none mb-3" role="alert"></div>
+  <div class="ms-panel">
+    <div id="alert" class="alert d-none mb-3" role="alert"></div>
 
-      <form id="contactForm" method="post" action="{% url 'frontend:contact_api' %}" enctype="multipart/form-data" novalidate>
-        {% csrf_token %}
-        <!-- Honeypot (bot 対策) -->
-        <input type="text" name="website" id="website" class="d-none" autocomplete="off" tabindex="-1" aria-hidden="true" />
+    <form id="contactForm" method="post" action="{% url 'frontend:contact_api' %}" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      <input type="text" name="website" id="website" class="d-none" autocomplete="off" tabindex="-1" aria-hidden="true" />
 
-        <div class="row g-3 mb-3">
-          <div class="col-md-6">
-            <label for="name" class="form-label">お名前 <span class="small">(必須)</span></label>
-            <input id="name" name="name" type="text" class="form-control" placeholder="田村 シェア" required />
-            <div class="text-danger small mt-1 error" data-for="name"></div>
-          </div>
-          <div class="col-md-6">
-            <label for="company" class="form-label">会社名 / 団体名</label>
-            <input id="company" name="company" type="text" class="form-control" placeholder="例：MURAシェア株式会社" />
-          </div>
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label for="name" class="form-label">お名前 <span class="small">(必須)</span></label>
+          <input id="name" name="name" type="text" class="form-control" placeholder="山田 太郎" required />
+          <div class="text-danger small mt-1 error" data-for="name"></div>
         </div>
+        <div class="col-md-6">
+          <label for="company" class="form-label">会社名 / 団体名</label>
+          <input id="company" name="company" type="text" class="form-control" placeholder="MURAシェア株式会社" />
+        </div>
+      </div>
 
-        <div class="row g-3 mb-3">
-          <div class="col-md-6">
-            <label for="email" class="form-label">メールアドレス <span class="small">(必須)</span></label>
-            <input id="email" name="email" type="email" class="form-control" placeholder="example@example.com" required />
-            <div class="text-danger small mt-1 error" data-for="email"></div>
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label for="email" class="form-label">メールアドレス <span class="small">(必須)</span></label>
+          <input id="email" name="email" type="email" class="form-control" placeholder="example@example.com" required />
+          <div class="text-danger small mt-1 error" data-for="email"></div>
+        </div>
+        <div class="col-md-6">
+          <label for="phone" class="form-label">電話番号</label>
+          <input id="phone" name="phone" type="tel" class="form-control" placeholder="080-1234-5678" />
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label for="type" class="form-label">お問い合わせ種別</label>
+          <select id="type" name="type" class="form-select">
+            <option value="general">一般のお問い合わせ</option>
+            <option value="support">サポート / トラブル</option>
+            <option value="sales">法人・提携のご相談</option>
+            <option value="other">その他</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label for="subject" class="form-label">件名</label>
+          <input id="subject" name="subject" type="text" class="form-control" placeholder="お問い合わせの件名" />
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label for="message" class="form-label">お問い合わせ内容 <span class="small">(必須)</span></label>
+        <textarea id="message" name="message" rows="5" class="form-control" required placeholder="状況やご要望をできるだけ詳しくご記入ください。"></textarea>
+        <div class="text-danger small mt-1 error" data-for="message"></div>
+      </div>
+
+      <div class="mb-3">
+        <label for="attachment" class="form-label">添付ファイル</label>
+        <input id="attachment" name="attachment" type="file" class="form-control" accept="image/*,.pdf,.zip" />
+        <div class="form-text">最大5MBまで。画像/PDF/ZIPに対応。</div>
+      </div>
+
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+          <div class="form-check">
+            <input type="checkbox" id="consent" name="consent" value="1" class="form-check-input" required />
+            <label class="form-check-label small" for="consent">個人情報の取り扱いに同意します。</label>
           </div>
-          <div class="col-md-6">
-            <label for="phone" class="form-label">電話番号</label>
-            <input id="phone" name="phone" type="tel" class="form-control" placeholder="080-1234-5678" />
-          </div>
+          <div class="text-danger small mt-1 error" data-for="consent"></div>
         </div>
+      </div>
 
-        <div class="row g-3 mb-3">
-          <div class="col-md-6">
-            <label for="type" class="form-label">お問い合わせ種別</label>
-            <select id="type" name="type" class="form-select">
-              <option value="general">一般的なお問い合わせ</option>
-              <option value="support">サポート（不具合報告）</option>
-              <option value="sales">導入・見積もり</option>
-              <option value="other">その他</option>
-            </select>
-          </div>
-          <div class="col-md-6">
-            <label for="subject" class="form-label">件名</label>
-            <input id="subject" name="subject" type="text" class="form-control" placeholder="お問い合わせの件名" />
-          </div>
-        </div>
+      <div class="d-flex flex-wrap gap-2">
+        <button type="submit" id="contact_submit" class="btn btn-dark">送信する</button>
+        <button type="reset" class="btn btn-outline-secondary">リセット</button>
+      </div>
 
-        <div class="mb-3">
-          <label for="message" class="form-label">お問い合わせ内容 <span class="small">(必須)</span></label>
-          <textarea id="message" name="message" rows="5" class="form-control" required placeholder="ご要望・不具合の詳細をできるだけ具体的にご記入ください..."></textarea>
-          <div class="text-danger small mt-1 error" data-for="message"></div>
-        </div>
-
-        <div class="mb-3">
-          <label for="attachment" class="form-label">添付ファイル（任意）</label>
-          <input id="attachment" name="attachment" type="file" class="form-control" accept="image/*,.pdf,.zip" />
-          <div class="form-text">最大5MB。画像・PDFを推奨。</div>
-        </div>
-
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-          <div>
-            <div class="form-check">
-              <input type="checkbox" id="consent" name="consent" value="1" class="form-check-input" required />
-              <label class="form-check-label small" for="consent">個人情報の取り扱いについて同意します（必須）</label>
-            </div>
-            <div class="text-danger small mt-1 error" data-for="consent"></div>
-          </div>
-        </div>
-
-        <div class="d-flex flex-wrap gap-2">
-          <button type="submit" id="contact_submit" class="btn btn-dark">送信する</button>
-          <button type="reset" class="btn btn-outline-secondary">リセット</button>
-        </div>
-
-        <p class="text-muted small mt-3">※ このフォームはサンプルです。実運用する場合はサーバー側でのバリデーションとファイルウイルスチェックを必ず行ってください。</p>
-      </form>
-    </div>
+      <p class="ms-muted small mt-3">※内容確認のため、担当者よりご連絡する場合があります。</p>
+    </form>
   </div>
 </div>
 
@@ -123,8 +123,8 @@
         if(honeypot){ return; }
         if(!name){ showError('name','お名前を入力してください'); ok=false }
         if(!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ showError('email','正しいメールアドレスを入力してください'); ok=false }
-        if(!message || message.length < 10){ showError('message','内容は10文字以上で入力してください'); ok=false }
-        if(!consent){ showError('consent','個人情報の取り扱いに同意してください'); ok=false }
+        if(!message || message.length < 10){ showError('message','10文字以上で入力してください'); ok=false }
+        if(!consent){ showError('consent','同意が必要です'); ok=false }
 
         if(!ok) return;
 
@@ -144,12 +144,12 @@
             }
 
             alertBox.className = 'alert alert-success mb-3';
-            alertBox.textContent = '送信が完了しました。担当より後ほどご連絡いたします。';
+            alertBox.textContent = '送信が完了しました。2営業日以内にご連絡します。';
             form.reset();
 
         }catch(err){
             alertBox.className = 'alert alert-danger mb-3';
-            alertBox.textContent = '送信中にエラーが発生しました。もう一度お試しください。';
+            alertBox.textContent = '送信に失敗しました。時間をおいて再度お試しください。';
             console.error(err);
 
         }finally{

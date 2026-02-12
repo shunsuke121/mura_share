@@ -1,10 +1,14 @@
 {% extends "base.html" %}
-{% block title %}{% if is_edit %}商品を編集{% else %}商品を投稿{% endif %} - MURAシェア{% endblock %}
+{% block title %}{% if is_edit %}出品を編集{% else %}新しく出品{% endif %} - MURA SHARE{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center justify-content-between mb-3">
-  <h1 class="h4 mb-0">{% if is_edit %}商品を編集{% else %}商品を投稿{% endif %}</h1>
-  <a href="{% url 'frontend:products' %}" class="btn btn-outline-secondary btn-sm">一覧に戻る</a>
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <div class="ms-kicker">Listing Studio</div>
+    <h1 class="h3 mb-1">{% if is_edit %}出品を編集{% else %}新しく出品{% endif %}</h1>
+    <div class="ms-muted">魅力が伝わる写真と説明で、成約率が上がります。</div>
+  </div>
+  <a href="{% url 'frontend:products' %}" class="btn btn-ghost btn-sm">一覧へ戻る</a>
 </div>
 
 {% if messages %}
@@ -15,194 +19,175 @@
   </div>
 {% endif %}
 
-<div class="card border-0 shadow-sm mb-4">
-  <div class="card-body">
-    <form method="post" enctype="multipart/form-data">
-      {% csrf_token %}
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
 
-      <!-- 画像 -->
-      <div class="card mb-4 border-0 shadow-sm">
-        <div class="card-header bg-white border-0"><h5 class="mb-0">商品画像</h5></div>
-        <div class="card-body">
-          <div class="mb-3">
-            <label class="form-label">メイン画像 {% if not is_edit %}<span class="text-danger">*</span>{% endif %}</label>
-            <input type="file" name="image_main" accept="image/*" class="form-control" {% if not is_edit %}required{% endif %}>
-            <small class="form-text text-muted">
-              {% if is_edit %}選択した場合は新しい画像に変更されます。{% else %}一覧や詳細画面で最初に表示される画像です。投稿時は4枚必須です。{% endif %}
-            </small>
-          </div>
-          <div class="row g-3">
-            <div class="col-md-4">
-              <label class="form-label">サブ画像1 {% if not is_edit %}<span class="text-danger">*</span>{% endif %}</label>
-              <input type="file" name="image_sub1" accept="image/*" class="form-control" {% if not is_edit %}required{% endif %}>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">サブ画像2 {% if not is_edit %}<span class="text-danger">*</span>{% endif %}</label>
-              <input type="file" name="image_sub2" accept="image/*" class="form-control" {% if not is_edit %}required{% endif %}>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">サブ画像3 {% if not is_edit %}<span class="text-danger">*</span>{% endif %}</label>
-              <input type="file" name="image_sub3" accept="image/*" class="form-control" {% if not is_edit %}required{% endif %}>
-            </div>
-          </div>
-        </div>
+  <div class="ms-panel mb-4">
+    <h5 class="mb-3">写真を追加</h5>
+    <div class="mb-3">
+      <label class="form-label">メイン画像{% if not is_edit %}<span class="text-danger">*</span>{% endif %}</label>
+      <input type="file" name="image_main" accept="image/*" class="form-control" {% if not is_edit %}required{% endif %}>
+      <div class="form-text">横長や正方形の明るい写真がおすすめです。</div>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">サブ画像 1{% if not is_edit %}<span class="text-danger">*</span>{% endif %}</label>
+        <input type="file" name="image_sub1" accept="image/*" class="form-control" {% if not is_edit %}required{% endif %}>
       </div>
-
-      <!-- 基本情報 -->
-      <div class="card mb-4 border-0 shadow-sm">
-        <div class="card-header bg-white border-0"><h5 class="mb-0">基本情報</h5></div>
-        <div class="card-body">
-          <div class="mb-3">
-            <label class="form-label">商品名 <span class="text-danger">*</span></label>
-            <input type="text" name="title" class="form-control" value="{{ form_data.title|default_if_none:'' }}" maxlength="120" placeholder="例：MURAシェアハウス">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">商品説明 <span class="text-danger">*</span></label>
-            <textarea name="description" class="form-control" rows="5" placeholder="商品の特徴や状態、注意事項などを詳しく記載してください。">{{ form_data.description|default_if_none:'' }}</textarea>
-          </div>
-
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label">カテゴリー <span class="text-danger">*</span></label>
-              {% with cat=form_data.category|default_if_none:'' %}
-              <select name="category" class="form-select" required>
-                <option value="">選択してください</option>
-                <option value="電子機器"       {% if cat == "電子機器" %}selected{% endif %}>電子機器</option>
-                <option value="家具"           {% if cat == "家具" %}selected{% endif %}>家具</option>
-                <option value="スポーツ用品"   {% if cat == "スポーツ用品" %}selected{% endif %}>スポーツ用品</option>
-                <option value="楽器"           {% if cat == "楽器" %}selected{% endif %}>楽器</option>
-                <option value="車両"           {% if cat == "車両" %}selected{% endif %}>車両</option>
-                <option value="アウトドア用品" {% if cat == "アウトドア用品" %}selected{% endif %}>アウトドア用品</option>
-                <option value="ファッション"   {% if cat == "ファッション" %}selected{% endif %}>ファッション</option>
-                <option value="書籍・メディア" {% if cat == "書籍・メディア" %}selected{% endif %}>書籍・メディア</option>
-                <option value="その他"         {% if cat == "その他" %}selected{% endif %}>その他</option>
-                {% if cat and cat not in "電子機器,家具,スポーツ用品,楽器,車両,アウトドア用品,ファッション,書籍・メディア,その他" %}
-                  <option value="{{ cat }}" selected hidden>{{ cat }}</option>
-                {% endif %}
-              </select>
-              {% endwith %}
-            </div>
-
-            <div class="col-md-6 mb-3">
-              <label class="form-label">商品の状態 <span class="text-danger">*</span></label>
-              {% with cond=form_data.condition|default_if_none:'' %}
-              <select name="condition" class="form-select">
-                <option value="">選択してください</option>
-                <option value="新品・未使用" {% if cond == "新品・未使用" %}selected{% endif %}>新品・未使用</option>
-                <option value="未使用に近い" {% if cond == "未使用に近い" %}selected{% endif %}>未使用に近い</option>
-                <option value="目立った傷や汚れなし" {% if cond == "目立った傷や汚れなし" %}selected{% endif %}>目立った傷や汚れなし</option>
-                <option value="やや傷や汚れあり" {% if cond == "やや傷や汚れあり" %}selected{% endif %}>やや傷や汚れあり</option>
-                <option value="傷や汚れあり" {% if cond == "傷や汚れあり" %}selected{% endif %}>傷や汚れあり</option>
-                <option value="全体的に状態が悪い" {% if cond == "全体的に状態が悪い" %}selected{% endif %}>全体的に状態が悪い</option>
-              </select>
-              {% endwith %}
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="col-md-4 mb-3">
-              <label class="form-label">在庫数</label>
-              <input type="number" name="stock_quantity" class="form-control" min="1" value="{{ form_data.stock_quantity|default:1 }}">
-            </div>
-          </div>
-        </div>
+      <div class="col-md-4">
+        <label class="form-label">サブ画像 2{% if not is_edit %}<span class="text-danger">*</span>{% endif %}</label>
+        <input type="file" name="image_sub2" accept="image/*" class="form-control" {% if not is_edit %}required{% endif %}>
       </div>
-
-      <!-- 提供方法と料金 -->
-      <div class="card mb-4 border-0 shadow-sm">
-        <div class="card-header bg-white border-0"><h5 class="mb-0">提供方法と料金</h5></div>
-        <div class="card-body">
-          <div class="mb-3">
-            <label class="form-label">提供方法 <span class="text-danger">*</span></label>
-            {% with at=form_data.availability_type|default:"レンタル・販売両方" %}
-            <select id="availability_type" name="availability_type" class="form-select">
-              <option value="レンタルのみ"       {% if at == "レンタルのみ" %}selected{% endif %}>レンタルのみ</option>
-              <option value="販売のみ"           {% if at == "販売のみ" %}selected{% endif %}>販売のみ</option>
-              <option value="レンタル・販売両方" {% if at == "レンタル・販売両方" %}selected{% endif %}>レンタル・販売両方</option>
-            </select>
-            {% endwith %}
-          </div>
-
-          <div class="row">
-            <div class="col-md-6">
-              <div class="border rounded p-3 mb-3">
-                <h6 class="mb-2">レンタル設定</h6>
-                <div class="mb-2">
-                  <label class="form-label">1日あたりの料金（円）</label>
-                  <input id="daily_price" type="number" name="daily_price" class="form-control" min="0"
-                         value="{{ form_data.daily_price|default_if_none:'' }}" placeholder="1000">
-                </div>
-                <div class="row">
-                  <div class="col-6 mb-2">
-                    <label class="form-label">最小日数</label>
-                    <input type="number" name="min_rental_days" class="form-control" min="1"
-                           value="{{ form_data.min_rental_days|default:1 }}">
-                  </div>
-                  <div class="col-6 mb-2">
-                    <label class="form-label">最大日数</label>
-                    <input type="number" name="max_rental_days" class="form-control" min="1"
-                           value="{{ form_data.max_rental_days|default:30 }}">
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="border rounded p-3 mb-3">
-                <h6 class="mb-2">販売設定</h6>
-                <div class="mb-2">
-                  <label class="form-label">販売価格（円）</label>
-                  <input id="sale_price" type="number" name="sale_price" class="form-control" min="0"
-                         value="{{ form_data.sale_price|default_if_none:'' }}" placeholder="10000">
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
+      <div class="col-md-4">
+        <label class="form-label">サブ画像 3{% if not is_edit %}<span class="text-danger">*</span>{% endif %}</label>
+        <input type="file" name="image_sub3" accept="image/*" class="form-control" {% if not is_edit %}required{% endif %}>
       </div>
-
-      <!-- メモ -->
-      <div class="card mb-4 border-0 shadow-sm">
-        <div class="card-header bg-white border-0"><h5 class="mb-0">出品者からのひとこと</h5></div>
-        <div class="card-body">
-          <div class="mb-3">
-            <label class="form-label">オーナーメモ</label>
-            <textarea name="owner_notes" class="form-control" rows="3" placeholder="受け渡しの希望時間帯や注意事項など">{{ form_data.owner_notes|default_if_none:'' }}</textarea>
-          </div>
-        </div>
-      </div>
-
-      <div class="d-flex gap-2 mb-3">
-        <a href="{% url 'frontend:products' %}" class="btn btn-outline-secondary flex-fill">キャンセル</a>
-        <button type="submit" class="btn btn-dark flex-fill">{% if is_edit %}保存{% else %}商品を投稿{% endif %}</button>
-      </div>
-    </form>
-
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        const availabilitySelect = document.getElementById("availability_type");
-        if (!availabilitySelect) return;
-        const dailyPriceInput = document.getElementById("daily_price");
-        const salePriceInput  = document.getElementById("sale_price");
-
-        function updatePriceInputs() {
-          const value = availabilitySelect.value;
-          if (value === "レンタルのみ") {
-            if (dailyPriceInput) { dailyPriceInput.disabled = false; dailyPriceInput.required = true; }
-            if (salePriceInput)  { salePriceInput.disabled  = true;  salePriceInput.required  = false; salePriceInput.value = ""; }
-          } else if (value === "販売のみ") {
-            if (dailyPriceInput) { dailyPriceInput.disabled = true;  dailyPriceInput.required = false; dailyPriceInput.value = ""; }
-            if (salePriceInput)  { salePriceInput.disabled  = false; salePriceInput.required  = true; }
-          } else {
-            if (dailyPriceInput) { dailyPriceInput.disabled = false; dailyPriceInput.required = true; }
-            if (salePriceInput)  { salePriceInput.disabled  = false; salePriceInput.required  = true; }
-          }
-        }
-        availabilitySelect.addEventListener("change", updatePriceInputs);
-        updatePriceInputs();
-      });
-    </script>
+    </div>
   </div>
-</div>
+
+  <div class="ms-panel mb-4">
+    <h5 class="mb-3">基本情報</h5>
+    <div class="mb-3">
+      <label class="form-label">商品名<span class="text-danger">*</span></label>
+      <input type="text" name="title" class="form-control" value="{{ form_data.title|default_if_none:'' }}" maxlength="120" placeholder="例: 高級カメラ、デザイナーズチェア">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">商品説明<span class="text-danger">*</span></label>
+      <textarea name="description" class="form-control" rows="5" placeholder="特徴、使用感、付属品など詳しく書くと成約率が上がります。">{{ form_data.description|default_if_none:'' }}</textarea>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label class="form-label">カテゴリ<span class="text-danger">*</span></label>
+        {% with cat=form_data.category|default_if_none:'' %}
+        <select name="category" class="form-select" required>
+          <option value="">選択してください</option>
+          <option value="アウトドア用品" {% if cat == "アウトドア用品" %}selected{% endif %}>アウトドア用品</option>
+          <option value="スポーツ用品" {% if cat == "スポーツ用品" %}selected{% endif %}>スポーツ用品</option>
+          <option value="ファッション" {% if cat == "ファッション" %}selected{% endif %}>ファッション</option>
+          <option value="家具" {% if cat == "家具" %}selected{% endif %}>家具</option>
+          <option value="書籍・メディア" {% if cat == "書籍・メディア" %}selected{% endif %}>書籍・メディア</option>
+          <option value="車両" {% if cat == "車両" %}selected{% endif %}>車両</option>
+          <option value="電子機器" {% if cat == "電子機器" %}selected{% endif %}>電子機器</option>
+          <option value="楽器" {% if cat == "楽器" %}selected{% endif %}>楽器</option>
+          <option value="その他" {% if cat == "その他" %}selected{% endif %}>その他</option>
+          {% if cat and cat not in "アウトドア用品,スポーツ用品,ファッション,家具,書籍・メディア,車両,電子機器,楽器,その他" %}
+            <option value="{{ cat }}" selected hidden>{{ cat }}</option>
+          {% endif %}
+        </select>
+        {% endwith %}
+      </div>
+
+      <div class="col-md-6 mb-3">
+        <label class="form-label">商品の状態<span class="text-danger">*</span></label>
+        {% with cond=form_data.condition|default_if_none:'' %}
+        <select name="condition" class="form-select" required>
+          <option value="">選択してください</option>
+          <option value="新品・未使用" {% if cond == "新品・未使用" %}selected{% endif %}>新品・未使用</option>
+          <option value="未使用に近い" {% if cond == "未使用に近い" %}selected{% endif %}>未使用に近い</option>
+          <option value="目立った傷や汚れなし" {% if cond == "目立った傷や汚れなし" %}selected{% endif %}>目立った傷や汚れなし</option>
+          <option value="やや傷や汚れあり" {% if cond == "やや傷や汚れあり" %}selected{% endif %}>やや傷や汚れあり</option>
+          <option value="傷や汚れあり" {% if cond == "傷や汚れあり" %}selected{% endif %}>傷や汚れあり</option>
+          <option value="全体的に状態が悪い" {% if cond == "全体的に状態が悪い" %}selected{% endif %}>全体的に状態が悪い</option>
+        </select>
+        {% endwith %}
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-4 mb-3">
+        <label class="form-label">在庫数</label>
+        <input type="number" name="stock_quantity" class="form-control" min="1" value="{{ form_data.stock_quantity|default:1 }}">
+      </div>
+    </div>
+  </div>
+
+  <div class="ms-panel mb-4">
+    <h5 class="mb-3">提供方法と価格</h5>
+    <div class="mb-3">
+      <label class="form-label">提供方法<span class="text-danger">*</span></label>
+      {% with at=form_data.availability_type|default:"レンタル・販売両方" %}
+      <select id="availability_type" name="availability_type" class="form-select">
+        <option value="レンタルのみ" {% if at == "レンタルのみ" %}selected{% endif %}>レンタルのみ</option>
+        <option value="販売のみ" {% if at == "販売のみ" %}selected{% endif %}>販売のみ</option>
+        <option value="レンタル・販売両方" {% if at == "レンタル・販売両方" %}selected{% endif %}>レンタル・販売両方</option>
+      </select>
+      {% endwith %}
+    </div>
+
+    <div class="row">
+      <div class="col-md-6">
+        <div class="border rounded p-3 mb-3">
+          <h6 class="mb-2">レンタル</h6>
+          <div class="mb-2">
+            <label class="form-label">1日あたりの料金</label>
+            <input id="daily_price" type="number" name="daily_price" class="form-control" min="0"
+                   value="{{ form_data.daily_price|default_if_none:'' }}" placeholder="1000">
+          </div>
+          <div class="row">
+            <div class="col-6 mb-2">
+              <label class="form-label">最短日数</label>
+              <input type="number" name="min_rental_days" class="form-control" min="1"
+                     value="{{ form_data.min_rental_days|default:1 }}">
+            </div>
+            <div class="col-6 mb-2">
+              <label class="form-label">最長日数</label>
+              <input type="number" name="max_rental_days" class="form-control" min="1"
+                     value="{{ form_data.max_rental_days|default:30 }}">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="border rounded p-3 mb-3">
+          <h6 class="mb-2">購入</h6>
+          <div class="mb-2">
+            <label class="form-label">販売価格</label>
+            <input id="sale_price" type="number" name="sale_price" class="form-control" min="0"
+                   value="{{ form_data.sale_price|default_if_none:'' }}" placeholder="10000">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ms-panel mb-4">
+    <h5 class="mb-3">出品者メモ</h5>
+    <div class="mb-3">
+      <label class="form-label">補足事項</label>
+      <textarea name="owner_notes" class="form-control" rows="3" placeholder="受け渡しや利用上の注意点など">{{ form_data.owner_notes|default_if_none:'' }}</textarea>
+    </div>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    <a href="{% url 'frontend:products' %}" class="btn btn-outline-secondary flex-fill">キャンセル</a>
+    <button type="submit" class="btn btn-dark flex-fill">{% if is_edit %}更新する{% else %}出品する{% endif %}</button>
+  </div>
+</form>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const availabilitySelect = document.getElementById("availability_type");
+    if (!availabilitySelect) return;
+    const dailyPriceInput = document.getElementById("daily_price");
+    const salePriceInput  = document.getElementById("sale_price");
+
+    function updatePriceInputs() {
+      const value = availabilitySelect.value;
+      if (value === "レンタルのみ") {
+        if (dailyPriceInput) { dailyPriceInput.disabled = false; dailyPriceInput.required = true; }
+        if (salePriceInput)  { salePriceInput.disabled  = true;  salePriceInput.required  = false; salePriceInput.value = ""; }
+      } else if (value === "販売のみ") {
+        if (dailyPriceInput) { dailyPriceInput.disabled = true;  dailyPriceInput.required = false; dailyPriceInput.value = ""; }
+        if (salePriceInput)  { salePriceInput.disabled  = false; salePriceInput.required  = true; }
+      } else {
+        if (dailyPriceInput) { dailyPriceInput.disabled = false; dailyPriceInput.required = true; }
+        if (salePriceInput)  { salePriceInput.disabled  = false; salePriceInput.required  = true; }
+      }
+    }
+    availabilitySelect.addEventListener("change", updatePriceInputs);
+    updatePriceInputs();
+  });
+</script>
 {% endblock %}

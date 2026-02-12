@@ -1,47 +1,34 @@
 {# templates/_partials/header.html #}
-<nav class="ms-header bg-white sticky-top">
+<nav class="ms-header">
   <div class="ms-header-inner">
-
-    <!-- 左：ロゴ -->
     <div class="ms-header-left">
       <button type="button"
-              class="ms-icon-btn ms-menu-btn d-lg-none"
+              class="ms-icon-btn d-lg-none"
               data-bs-toggle="offcanvas"
               data-bs-target="#offcanvasSidebar"
               aria-controls="offcanvasSidebar"
-              aria-label="メニュー">
+              aria-label="Menu">
         <i class="bi bi-list"></i>
       </button>
-      <a class="ms-brand d-flex align-items-center text-decoration-none"
-         href="{% url 'frontend:products' %}">
-        <span class="ms-brand-text"><span class="font-roman">MURA</span>シェア</span>
+      <a class="d-flex align-items-center gap-2 text-decoration-none" href="{% url 'frontend:products' %}">
+        <span class="ms-brand-badge">MS</span>
+        <span>
+          <span class="ms-brand-text d-block">MURA SHARE</span>
+          <span class="ms-brand-sub d-block">Atelier of Things</span>
+        </span>
       </a>
     </div>
 
-    <!-- 真ん中：ナビ -->
-    <ul class="ms-nav list-unstyled d-none d-md-flex align-items-center mb-0">
-      <li>
-        <a href="{% url 'frontend:products' %}"
-           class="ms-nav-link {% if request.resolver_match.url_name == 'products' %}is-active{% endif %}">
-          <i class="bi bi-house-door"></i><span>ホーム</span>
-        </a>
-      </li>
-      <li>
-        <a href="{% url 'frontend:messages' %}"
-           class="ms-nav-link {% if request.resolver_match.url_name == 'messages' %}is-active{% endif %}">
-          <i class="bi bi-chat-dots"></i><span>メッセージ</span>
-        </a>
-      </li>
-      <li>
-        <a href="{% url 'frontend:product_new' %}"
-           class="ms-nav-link {% if request.resolver_match.url_name == 'product_new' %}is-active{% endif %}">
-          <i class="bi bi-plus-circle"></i><span>投稿</span>
-        </a>
-      </li>
-    </ul>
+    <form class="ms-search d-none d-lg-flex" method="get" action="{% url 'frontend:products' %}" role="search">
+      <i class="bi bi-search"></i>
+      <input type="search" name="q" placeholder="探す: アイテム / カテゴリ / 気分" value="{{ request.GET.q|default:'' }}" autocomplete="off">
+    </form>
 
-    <!-- 右：通知＆アバター -->
-    <div class="ms-header-right d-flex align-items-center gap-3">
+    <div class="ms-header-right">
+      <a href="{% url 'frontend:product_new' %}" class="btn btn-primary btn-sm d-none d-md-inline-flex">
+        <i class="bi bi-plus-circle me-1"></i>出品する
+      </a>
+
       {% if request.user.is_authenticated %}
         <div class="dropdown">
           <a href="#"
@@ -50,7 +37,7 @@
              data-bs-toggle="dropdown"
              aria-expanded="false"
              role="button"
-             aria-label="通知">
+             aria-label="Notifications">
             <i class="bi bi-bell"></i>
             {% if notifications_unread_count %}
               <span class="notif-badge">{{ notifications_unread_count }}</span>
@@ -68,10 +55,10 @@
                 </li>
               {% endfor %}
             {% else %}
-              <li><span class="dropdown-item-text text-muted">通知はまだありません。</span></li>
+              <li><span class="dropdown-item-text text-muted">新しい通知はありません。</span></li>
             {% endif %}
             <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item text-center" href="{% url 'frontend:notifications' %}">通知一覧を見る</a></li>
+            <li><a class="dropdown-item text-center" href="{% url 'frontend:notifications' %}">通知をすべて見る</a></li>
           </ul>
         </div>
 
@@ -86,12 +73,8 @@
           {% endif %}
         </a>
       {% else %}
-        <a href="{% url 'frontend:login' %}" class="ms-icon-btn" aria-label="通知">
-          <i class="bi bi-bell"></i>
-        </a>
-        <a class="btn btn-sm btn-outline-secondary" href="{% url 'frontend:login' %}">
-          ログイン
-        </a>
+        <a class="btn btn-ghost btn-sm" href="{% url 'frontend:login' %}">ログイン</a>
+        <a class="btn btn-primary btn-sm" href="{% url 'frontend:signup' %}">無料で始める</a>
       {% endif %}
     </div>
 
