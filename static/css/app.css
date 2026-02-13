@@ -758,7 +758,8 @@ textarea.form-control {
 }
 
 .purchases .segmented,
-.rentals .segmented {
+.rentals .segmented,
+.returns .segmented {
   background: rgba(255, 255, 255, 0.8);
   border-radius: 999px;
   padding: 6px;
@@ -768,7 +769,8 @@ textarea.form-control {
 }
 
 .purchases .seg-btn,
-.rentals .seg-btn {
+.rentals .seg-btn,
+.returns .seg-btn {
   flex: 1;
   text-align: center;
   padding: 0.55rem 0.9rem;
@@ -778,7 +780,8 @@ textarea.form-control {
 }
 
 .purchases .seg-btn.active,
-.rentals .seg-btn.active {
+.rentals .seg-btn.active,
+.returns .seg-btn.active {
   background: #10131a;
   color: #f7f2ea;
 }
@@ -881,8 +884,20 @@ textarea.form-control {
 }
 
 .notif-dropdown {
-  width: 320px;
+  width: min(360px, 90vw);
   max-width: 90vw;
+  white-space: normal;
+}
+
+.notif-dropdown .dropdown-item,
+.notif-dropdown .dropdown-item-text {
+  white-space: normal;
+}
+
+.notif-body {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .ms-search input {

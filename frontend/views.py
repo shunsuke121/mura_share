@@ -1542,6 +1542,7 @@ def rental_manage(request):
         a.status_label = STATUS_LABELS.get(s, s)
         a.badge_class = BADGE_CLASS.get(s, "secondary")
         a.purchase_completed = False
+        a.can_purchase = False
         if (
             getattr(a, "order_type", None) == RentalApplication.OrderType.RENTAL
             and _purchase_completed_for_app(a)
@@ -1549,6 +1550,13 @@ def rental_manage(request):
             a.purchase_completed = True
             a.status_label = "購入手続き完了"
             a.badge_class = "secondary"
+        if (
+            not a.purchase_completed
+            and getattr(a, "order_type", None) == RentalApplication.OrderType.RENTAL
+            and _allow_purchase_for_product(a.product)
+        ):
+            status_lower = str(getattr(a, "status", "")).lower()
+            a.can_purchase = status_lower in ("renting", "received")
         a.display_message = _strip_return_tracking_line(getattr(a, "message", ""))
         a.display_message = _strip_return_tracking_line(getattr(a, "message", ""))
     ctx = {
@@ -1639,6 +1647,7 @@ def my_applications(request):
         a.status_label = STATUS_LABELS.get(s, s)
         a.badge_class = BADGE_CLASS.get(s, "secondary")
         a.purchase_completed = False
+        a.can_purchase = False
         if (
             getattr(a, "order_type", None) == RentalApplication.OrderType.RENTAL
             and _purchase_completed_for_app(a)
@@ -1646,6 +1655,13 @@ def my_applications(request):
             a.purchase_completed = True
             a.status_label = "購入手続き完了"
             a.badge_class = "secondary"
+        if (
+            not a.purchase_completed
+            and getattr(a, "order_type", None) == RentalApplication.OrderType.RENTAL
+            and _allow_purchase_for_product(a.product)
+        ):
+            status_lower = str(getattr(a, "status", "")).lower()
+            a.can_purchase = status_lower in ("renting", "received")
 
     ctx = {
         "applications": apps,
@@ -2940,6 +2956,17 @@ def my_notifications(request):
             .filter(user=request.user)
             .order_by("-created_at")
         )
+        kind_labels = {
+            "rental": "レンタル",
+            "purchase": "購入",
+            "return": "返品",
+            "chat": "チャット",
+            "comment": "コメント",
+            "system": "お知らせ",
+        }
+        for n in items:
+            kind = str(getattr(n, "kind", "") or "").lower()
+            n.kind_label = kind_labels.get(kind, getattr(n, "kind", "") or "通知")
         unread_ids = [n.id for n in items if getattr(n, "read_at", None) is None]
         if unread_ids:
             Notification.objects.filter(id__in=unread_ids).update(read_at=timezone.now())

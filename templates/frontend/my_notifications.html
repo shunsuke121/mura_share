@@ -4,7 +4,7 @@
 <div class="ms-section">
   <div class="ms-section-title">
     <div>
-      <div class="ms-kicker">Notifications</div>
+      <div class="ms-kicker">通知</div>
       <h2>通知</h2>
       <div class="ms-muted">最新の通知を確認できます。</div>
     </div>
@@ -14,7 +14,7 @@
     <ul class="list-group list-group-flush">
       {% for n in object_list %}
         <li class="list-group-item d-flex gap-3 align-items-start {% if n.id in unread_ids %}bg-light{% endif %}">
-          <span class="badge bg-secondary align-self-start mt-1">{{ n.kind }}</span>
+          <span class="badge bg-secondary align-self-start mt-1">{{ n.kind_label|default:n.kind }}</span>
           <div class="flex-grow-1">
             <div class="{% if n.id in unread_ids %}fw-semibold{% endif %}">{{ n.body }}</div>
             <div class="text-muted small">{{ n.created_at|date:"Y/m/d H:i" }}</div>

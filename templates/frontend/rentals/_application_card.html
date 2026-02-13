@@ -149,12 +149,10 @@
                 <input type="text" name="return_tracking_number" class="form-control flex-grow-1" placeholder="返却の追跡番号">
                 <button class="btn btn-primary">返却する</button>
               </form>
-              {% if a.order_type == "rental" and a.product %}
-                {% if a.product.availability_type == "レンタル・販売両方" or a.product.availability_type == "販売のみ" %}
-                  <form method="get" action="{% url 'frontend:rental_app_purchase' a.id %}" class="m-0 flex-grow-1">
-                    <button class="btn btn-outline-primary w-100">購入する</button>
-                  </form>
-                {% endif %}
+              {% if a.can_purchase %}
+                <form method="get" action="{% url 'frontend:rental_app_purchase' a.id %}" class="m-0 flex-grow-1">
+                  <button class="btn btn-outline-primary w-100">購入する</button>
+                </form>
               {% endif %}
 
             {% else %}
