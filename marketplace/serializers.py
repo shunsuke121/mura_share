@@ -33,7 +33,7 @@ class PurchaseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Purchase
-        fields = ["id","product","buyer","price","status","created_at"]
+        fields = ["id", "product", "buyer", "purchase_price", "status", "created_at"]
 
 class ReviewSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(read_only=True)
